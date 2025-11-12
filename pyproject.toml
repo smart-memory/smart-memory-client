@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartmemory-client"
+version = "1.0.0"
+description = "Python client for SmartMemory Service API"
+readme = "README.md"
+authors = [
+    {name = "SmartMemory Team", email = "team@smartmemory.dev"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["smartmemory", "memory", "ai", "knowledge-graph", "semantic-memory"]
+dependencies = [
+    "httpx>=0.24.0",
+    "attrs>=23.0.0",
+    "smartmemory>=0.1.14",
+]
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.5.0",
+    "ruff>=0.0.287",
+]
+
+[project.urls]
+Homepage = "https://github.com/smartmemory/smart-memory-client"
+Documentation = "https://docs.smartmemory.dev"
+Repository = "https://github.com/smartmemory/smart-memory-client"
+Issues = "https://github.com/smartmemory/smart-memory-client/issues"
+Changelog = "https://github.com/smartmemory/smart-memory-client/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["smartmemory_client*"]
+exclude = ["tests*", "docs*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=smartmemory_client --cov-report=term-missing"

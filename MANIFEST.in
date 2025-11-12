@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+recursive-include smartmemory_client *.py
+recursive-include smartmemory_client/generated *.py
+exclude tests
+exclude docs
