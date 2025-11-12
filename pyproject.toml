@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smartmemory-client"
-version = "0.1.15"
+dynamic = ["version"]
 description = "Python client for SmartMemory Service API"
 readme = "README.md"
 authors = [
@@ -51,6 +51,9 @@ Changelog = "https://github.com/smartmemory/smart-memory-client/blob/main/CHANGE
 where = ["."]
 include = ["smartmemory_client*"]
 exclude = ["tests*", "docs*"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 [tool.black]
 line-length = 100

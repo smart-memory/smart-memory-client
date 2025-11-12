@@ -71,14 +71,9 @@ if [ -f "$SMARTMEMORY_DIR/VERSION" ]; then
     echo -e "${YELLOW}Syncing VERSION from smart-memory...${NC}"
     cp "$SMARTMEMORY_DIR/VERSION" "$CLIENT_DIR/VERSION"
     
-    # Update pyproject.toml version
     VERSION=$(cat "$CLIENT_DIR/VERSION" | tr -d '\n\r')
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" "$CLIENT_DIR/pyproject.toml"
-    else
-        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$CLIENT_DIR/pyproject.toml"
-    fi
     echo -e "${GREEN}✅ Version synced to: $VERSION${NC}"
+    echo -e "${BLUE}ℹ  pyproject.toml reads version dynamically from VERSION file${NC}"
 fi
 
 echo -e "${GREEN}✅ Sync complete!${NC}"
@@ -87,5 +82,6 @@ echo "Next steps:"
 echo "  1. Review changes: git diff"
 echo "  2. Test: pytest tests/"
 echo "  3. Commit: git add . && git commit -m 'Sync from service'"
-echo "  4. Bump version in pyproject.toml if needed"
-echo "  5. Publish: python -m build && twine upload dist/*"
+echo "  4. Publish: python -m build && twine upload dist/*"
+echo ""
+echo "Note: Version is automatically read from VERSION file - no manual updates needed!"

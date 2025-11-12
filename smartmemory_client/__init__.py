@@ -42,7 +42,7 @@ def _get_version() -> str:
         with open(version_file, "r", encoding="utf-8") as f:
             return f.read().strip()
     except FileNotFoundError:
-        return "0.1.15"  # Fallback
+        return "unknown"  # Fallback
 
 __version__ = _get_version()
 __all__ = ["SmartMemoryClient", "SmartMemoryClientError"]
