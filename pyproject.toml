@@ -25,7 +25,7 @@ keywords = ["smartmemory", "memory", "ai", "knowledge-graph", "semantic-memory"]
 dependencies = [
     "httpx>=0.24.0",
     "attrs>=23.0.0",
-    "smartmemory>=0.1.14",
+    "smartmemory>=0.1.15",
 ]
 requires-python = ">=3.11"
 

@@ -279,7 +279,7 @@ mypy smartmemory_client
 **Runtime:**
 - `httpx>=0.24.0` - HTTP client
 - `attrs>=23.0.0` - Classes without boilerplate
-- `smartmemory>=0.1.14` - MemoryItem model
+- `smartmemory>=0.1.15` - MemoryItem model
 
 **Development:**
 - `pytest>=7.4.0` - Testing framework
