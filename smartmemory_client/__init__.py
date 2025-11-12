@@ -32,7 +32,17 @@ For more information:
     https://docs.smartmemory.dev
 """
 
+from pathlib import Path
 from smartmemory_client.client import SmartMemoryClient, SmartMemoryClientError
 
-__version__ = "1.0.0"
+def _get_version() -> str:
+    """Get version from VERSION file."""
+    version_file = Path(__file__).parent.parent / "VERSION"
+    try:
+        with open(version_file, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "0.1.15"  # Fallback
+
+__version__ = _get_version()
 __all__ = ["SmartMemoryClient", "SmartMemoryClientError"]

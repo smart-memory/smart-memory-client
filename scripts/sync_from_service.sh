@@ -65,6 +65,22 @@ if [ -f "$SERVICE_DIR/openapi.schema.json" ]; then
     cp "$SERVICE_DIR/openapi.schema.json" "$CLIENT_DIR/openapi.schema.json"
 fi
 
+# Sync VERSION file from smart-memory (source of truth)
+SMARTMEMORY_DIR="${SMARTMEMORY_DIR:-$(dirname $(dirname $SERVICE_DIR))/smart-memory}"
+if [ -f "$SMARTMEMORY_DIR/VERSION" ]; then
+    echo -e "${YELLOW}Syncing VERSION from smart-memory...${NC}"
+    cp "$SMARTMEMORY_DIR/VERSION" "$CLIENT_DIR/VERSION"
+    
+    # Update pyproject.toml version
+    VERSION=$(cat "$CLIENT_DIR/VERSION" | tr -d '\n\r')
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" "$CLIENT_DIR/pyproject.toml"
+    else
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$CLIENT_DIR/pyproject.toml"
+    fi
+    echo -e "${GREEN}✅ Version synced to: $VERSION${NC}"
+fi
+
 echo -e "${GREEN}✅ Sync complete!${NC}"
 echo ""
 echo "Next steps:"
