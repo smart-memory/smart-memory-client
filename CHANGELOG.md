@@ -10,14 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.18] - 2025-11-25
 
+### 🎯 Interface Alignment with Core Library
+
+Aligned client method names and return types with core `smartmemory` library for portable code.
+
 ### Added
 - **New API methods** for complete service coverage:
   - `add_edge()` - Direct edge creation between nodes with custom properties
   - `reflect()` - Memory pattern analysis and insights
-  - `summarize_memories()` - High-level memory content summary
+  - `summarize()` - High-level memory content summary
+
+### Changed
+- **Method renames** to match core library:
+  - `get_summary()` → `summary()`
+  - `get_orphaned_notes()` → `orphaned_notes()`
+  - `summarize_memories()` → `summarize()`
+  - `prune_memories()` → `prune()`
+- **MemoryItem** enhanced with:
+  - `from_dict()` factory method for consistent parsing
+  - Dict-like access (`item["content"]`) for compatibility
+  - Additional fields: `user_id`, `workspace_id`, `tenant_id`, `tags`
+- **Return types**: `get()` and `search()` now use `MemoryItem.from_dict()` for consistent parsing
+- **Fixed** `get_neighbors()` to use standard `_request()` helper
 
 ### Removed
 - Deleted stale work artifacts: `CLEANUP_CHECKLIST.md`, `PACKAGE_SETUP_COMPLETE.md`, `SSG_UPDATE.md`
+- Removed duplicate methods in Usage section
 
 ---
 

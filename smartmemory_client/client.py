@@ -263,13 +263,8 @@ class SmartMemoryClient:
             if response is None:
                 return None
 
-            # Convert response to MemoryItem
-            return MemoryItem(
-                item_id=response.get("item_id", item_id),
-                content=response.get("content", ""),
-                memory_type=response.get("memory_type", "semantic"),
-                metadata=response.get("metadata", {}),
-            )
+            # Convert response to MemoryItem using factory method
+            return MemoryItem.from_dict(response)
         except Exception as e:
             logger.error(f"Error getting memory {item_id}: {e}")
             return None
@@ -342,18 +337,8 @@ class SmartMemoryClient:
             else:
                 continue
 
-            memory_item = MemoryItem(
-                item_id=item_dict.get("item_id", ""),
-                content=item_dict.get("content", ""),
-                memory_type=item_dict.get("memory_type", "semantic"),
-                metadata=item_dict.get("metadata", {}),
-            )
-
-            # Add score if available
-            if "score" in item_dict:
-                memory_item.score = item_dict["score"]
-
-            results.append(memory_item)
+            # Use factory method for consistent parsing
+            results.append(MemoryItem.from_dict(item_dict))
 
         return results
     
@@ -407,16 +392,10 @@ class SmartMemoryClient:
         
         data = self._request("POST", "/memory/search/advanced", json_body=payload)
         
-        # Parse response
+        # Parse response using factory method
         results = []
         for item_dict in data.get("results", []):
-            memory_item = MemoryItem(
-                item_id=item_dict.get("item_id", ""),
-                content=item_dict.get("content", ""),
-                memory_type=item_dict.get("memory_type", "semantic"),
-                metadata=item_dict.get("metadata", {}),
-            )
-            results.append(memory_item)
+            results.append(MemoryItem.from_dict(item_dict))
         
         return results
 
@@ -606,38 +585,23 @@ class SmartMemoryClient:
             item_id: Memory item ID
 
         Returns:
-            List of neighbor information
+            List of neighbor information with item and link_type
 
         Example:
             ```python
             neighbors = client.get_neighbors("item_123")
             for neighbor in neighbors:
-                print(f"{neighbor['id']}: {neighbor['relation']}")
+                print(f"{neighbor['item_id']}: {neighbor['link_type']}")
             ```
         """
-        # Make direct HTTP request
-        import httpx
-        url = f"{self._client._base_url}/memory/{item_id}/neighbors"
-        headers = {"X-Team-Id": self.team_id}
-        
-        # Add auth token if available
-        if hasattr(self._client, 'token') and self._client.token:
-            prefix = getattr(self._client, 'prefix', 'Bearer')
-            headers["Authorization"] = f"{prefix} {self._client.token}"
-        
         try:
-            http_response = httpx.get(url, headers=headers, timeout=30.0)
-            http_response.raise_for_status()
-            result = http_response.json()
+            result = self._request("GET", f"/memory/{item_id}/neighbors")
             return result.get("neighbors", [])
-        except httpx.HTTPStatusError as e:
-            logger.warning(f"Failed to get neighbors: {e}")
-            return []
         except Exception as e:
             logger.warning(f"Error getting neighbors: {e}")
             return []
 
-    def get_summary(self) -> Dict[str, Any]:
+    def summary(self) -> Dict[str, Any]:
         """
         Get summary statistics about the memory system.
 
@@ -646,7 +610,7 @@ class SmartMemoryClient:
 
         Example:
             ```python
-            summary = client.get_summary()
+            summary = client.summary()
             print(f"Total memories: {summary.get('total_count', 0)}")
             ```
         """
@@ -931,11 +895,11 @@ class SmartMemoryClient:
     # Admin & Monitoring
     # ============================================================================
 
-    def get_orphaned_notes(self) -> Dict[str, Any]:
+    def orphaned_notes(self) -> Dict[str, Any]:
         """Find orphaned notes (notes with no connections)."""
         return self._request("GET", "/memory/admin/orphaned-notes")
 
-    def prune_memories(
+    def prune(
         self, strategy: str = "old", days: int = 365, dry_run: bool = True
     ) -> Dict[str, Any]:
         """Prune old or unused memories."""
@@ -975,7 +939,7 @@ class SmartMemoryClient:
         """
         return self._request("GET", "/memory/admin/reflect", params={"top_k": top_k})
 
-    def summarize_memories(self, max_items: int = 10) -> Dict[str, Any]:
+    def summarize(self, max_items: int = 10) -> Dict[str, Any]:
         """
         Generate a summary of memory contents.
 
@@ -990,7 +954,7 @@ class SmartMemoryClient:
 
         Example:
             ```python
-            summary = client.summarize_memories(max_items=20)
+            summary = client.summarize(max_items=20)
             print(summary["summary"]["topic_distribution"])
             ```
         """
@@ -1723,18 +1687,6 @@ class SmartMemoryClient:
     def get_usage_dashboard(self) -> Dict[str, Any]:
         """Get usage dashboard with current quotas and limits."""
         return self._request("GET", "/usage/dashboard")
-
-    def get_system_stats(self) -> Dict[str, Any]:
-        """Get comprehensive system statistics."""
-        return self._request("GET", "/memory/admin/stats")
-
-    def get_analytics_status(self) -> Dict[str, Any]:
-        """Return analytics feature status."""
-        return self._request("GET", "/memory/analytics/status")
-
-    def get_governance_summary(self) -> Dict[str, Any]:
-        """Get a summary of governance state."""
-        return self._request("GET", "/memory/governance/summary")
 
     # ============================================================================
     # Webhooks
