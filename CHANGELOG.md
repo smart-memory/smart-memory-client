@@ -2,16 +2,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+---
+
+## [0.1.18] - 2025-11-25
+
+### Added
+- **New API methods** for complete service coverage:
+  - `add_edge()` - Direct edge creation between nodes with custom properties
+  - `reflect()` - Memory pattern analysis and insights
+  - `summarize_memories()` - High-level memory content summary
+
+### Removed
+- Deleted stale work artifacts: `CLEANUP_CHECKLIST.md`, `PACKAGE_SETUP_COMPLETE.md`, `SSG_UPDATE.md`
+
+---
+
+## [0.1.17] - 2025-11-23
 
 ### Added
 - **SSG (Similarity Graph Traversal) support** for enhanced semantic retrieval
   - New `search_advanced()` method with `query_traversal` and `triangulation_fulldim` algorithms
   - Optional `use_ssg` parameter in `search()` method for better multi-hop reasoning
   - Superior retrieval quality: 100% test pass rate, 0.91 precision/recall (vs 0.88 basic)
-  - Reference: Eric Lester. (2025). Novel Semantic Similarity Graph Traversal Algorithms for Semantic Retrieval Augmented Generation Systems. https://github.com/glacier-creative-git/semantic-similarity-graph-traversal-semantic-rag-research
+  - Reference: Eric Lester. (2025). Novel Semantic Similarity Graph Traversal Algorithms for Semantic Retrieval Augmented Generation Systems.
 - Initial client implementation
 - Full API coverage for SmartMemory Service
 - JWT authentication support

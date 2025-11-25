@@ -9,11 +9,11 @@ Official Python client for the [SmartMemory Service](https://github.com/smartmem
 ## Features
 
 - ✅ **Type-safe API** with Pydantic models
-- ✅ **Automatic JWT authentication**
+- ✅ **Automatic JWT authentication** with token handling
 - ✅ **Full API coverage** (CRUD, ingestion, search, links, temporal, etc.)
-- ✅ **Async support** (coming soon)
 - ✅ **Comprehensive error handling**
-- ✅ **Auto-generated from OpenAPI schema**
+- ✅ **Clean, manually-maintained code** (no code generation complexity)
+- ✅ **Automatic scoping** - tenant/workspace/user derived from JWT token
 
 ## Installation
 
@@ -212,13 +212,14 @@ if client.delete("item_123"):
 
 ```python
 # Ingest with full pipeline
+# Note: user_id, tenant_id, workspace_id are automatically derived from JWT token
 result = client.ingest(
     content="User: Hello\nAssistant: Hi there!",
     extractor_name="llm",
     context={
         "conversation_id": "123",
         "timestamp": "2025-11-10",
-        "user_id": "user_456"
+        "source": "chat_interface"
     }
 )
 
@@ -307,7 +308,7 @@ class MemoryManager:
         )
     
     def ingest_conversation(self, content, metadata):
-        # user_id automatically from JWT token
+        # user_id, tenant_id, workspace_id automatically from JWT token
         return self.client.ingest(
             content=content,
             extractor_name="llm",
