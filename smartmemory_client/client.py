@@ -751,6 +751,164 @@ class SmartMemoryClient:
         except Exception as e:
             raise SmartMemoryClientError(f"Failed to get clustering stats: {str(e)}")
 
+    # =========================================================================
+    # Temporal / Versioning
+    # =========================================================================
+
+    def get_history(
+        self,
+        item_id: str,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Get complete version history of a memory item.
+        
+        Args:
+            item_id: Memory item ID
+            start_time: Start time filter (ISO format)
+            end_time: End time filter (ISO format)
+            limit: Maximum versions to return
+            
+        Returns:
+            Version history with timestamps
+            
+        Example:
+            ```python
+            history = client.get_history("item_123")
+            for version in history["history"]:
+                print(f"v{version['version']}: {version['content'][:50]}")
+            ```
+        """
+        params = {"limit": limit}
+        if start_time:
+            params["start_time"] = start_time
+        if end_time:
+            params["end_time"] = end_time
+        return self._request("GET", f"/temporal/{item_id}/history", params=params)
+
+    def time_travel(
+        self,
+        timestamp: str,
+        query: Optional[str] = None,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Time-travel query - get memory state at specific time.
+        
+        Args:
+            timestamp: ISO format timestamp
+            query: Optional search query
+            limit: Maximum results
+            
+        Returns:
+            All memories as they existed at the specified timestamp
+            
+        Example:
+            ```python
+            # Get state from last week
+            state = client.time_travel("2024-01-15T00:00:00Z")
+            print(f"Found {state['count']} memories at that time")
+            ```
+        """
+        params = {"limit": limit}
+        if query:
+            params["query"] = query
+        return self._request("GET", f"/temporal/at/{timestamp}", params=params)
+
+    def get_item_at_time(
+        self,
+        item_id: str,
+        timestamp: str
+    ) -> Dict[str, Any]:
+        """
+        Get specific item as it existed at a timestamp.
+        
+        Args:
+            item_id: Memory item ID
+            timestamp: ISO format timestamp
+            
+        Returns:
+            The version of the item that was valid at the specified time
+        """
+        return self._request("GET", f"/temporal/{item_id}/at/{timestamp}")
+
+    def get_changes(
+        self,
+        item_id: str,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        change_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get all changes to an item in time range.
+        
+        Args:
+            item_id: Memory item ID
+            since: Start time (ISO format)
+            until: End time (ISO format)
+            change_type: Filter by change type
+            
+        Returns:
+            Detailed change log with old/new values
+        """
+        params = {}
+        if since:
+            params["since"] = since
+        if until:
+            params["until"] = until
+        if change_type:
+            params["change_type"] = change_type
+        return self._request("GET", f"/temporal/{item_id}/changes", params=params)
+
+    def compare_versions(
+        self,
+        item_id: str,
+        v1: int,
+        v2: int
+    ) -> Dict[str, Any]:
+        """
+        Compare two versions of an item.
+        
+        Args:
+            item_id: Memory item ID
+            v1: First version number
+            v2: Second version number
+            
+        Returns:
+            Detailed diff showing what changed between versions
+        """
+        params = {"v1": v1, "v2": v2}
+        return self._request("POST", f"/temporal/{item_id}/compare", params=params)
+
+    def rollback(
+        self,
+        item_id: str,
+        to_version: Optional[int] = None,
+        to_time: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Rollback item to previous version.
+        
+        Args:
+            item_id: Memory item ID
+            to_version: Version number to rollback to
+            to_time: Timestamp to rollback to (ISO format)
+            
+        Returns:
+            Rollback result with new version info
+            
+        Note:
+            Creates new version (doesn't delete history).
+        """
+        params = {}
+        if to_version is not None:
+            params["to_version"] = to_version
+        if to_time:
+            params["to_time"] = to_time
+        return self._request("POST", f"/temporal/{item_id}/rollback", params=params)
+
     def ground(
         self,
         item_id: str,
@@ -1850,6 +2008,182 @@ class SmartMemoryClient:
         """Query notes by dynamic relation type."""
         params = {"limit": limit}
         return self._request("GET", f"/memory/zettel/by-relation/{source_id}/{relation_type}", params=params)
+
+    # =========================================================================
+    # Reasoning / Assertion Challenging
+    # =========================================================================
+
+    def challenge(
+        self,
+        assertion: str,
+        memory_type: str = "semantic",
+        use_llm: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Challenge an assertion against existing knowledge to detect contradictions.
+        
+        Uses a multi-method detection cascade:
+        1. LLM-based (if enabled) - most accurate
+        2. Graph-based - structural analysis
+        3. Embedding-based - semantic similarity + polarity
+        4. Heuristic - pattern matching fallback
+        
+        Args:
+            assertion: The assertion to challenge
+            memory_type: Type of memory to search (default: "semantic")
+            use_llm: Use LLM for deep contradiction analysis
+            
+        Returns:
+            Challenge result with conflicts, confidence, etc.
+            
+        Example:
+            ```python
+            result = client.challenge("Paris is the capital of Germany")
+            if result["has_conflicts"]:
+                for conflict in result["conflicts"]:
+                    print(f"Contradicts: {conflict['existing_fact']}")
+            ```
+        """
+        body = {
+            "assertion": assertion,
+            "memory_type": memory_type,
+            "use_llm": use_llm
+        }
+        return self._request("POST", "/reasoning/challenge", json_body=body)
+
+    def resolve_conflict(
+        self,
+        existing_item_id: str,
+        new_fact: str,
+        auto_resolve: bool = True,
+        strategy: Optional[str] = None,
+        use_wikipedia: bool = True,
+        use_llm: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Resolve a conflict between assertions.
+        
+        Auto-resolution cascade (if enabled):
+        1. Wikipedia lookup - verify against Wikipedia
+        2. LLM reasoning - ask GPT to fact-check
+        3. Grounding check - check existing provenance
+        4. Recency heuristic - prefer recent info for temporal conflicts
+        
+        Args:
+            existing_item_id: ID of the existing memory item in conflict
+            new_fact: The new fact that conflicts
+            auto_resolve: Attempt auto-resolution before manual strategy
+            strategy: Manual resolution strategy if auto fails
+                     ("keep_existing", "accept_new", "keep_both", "defer")
+            use_wikipedia: Use Wikipedia for verification
+            use_llm: Use LLM for reasoning
+            
+        Returns:
+            Resolution result with method, evidence, confidence
+            
+        Example:
+            ```python
+            result = client.resolve_conflict(
+                existing_item_id="item_123",
+                new_fact="Paris is the capital of Germany",
+                auto_resolve=True
+            )
+            if result["auto_resolved"]:
+                print(f"Resolved via {result['method']}: {result['evidence']}")
+            ```
+        """
+        body = {
+            "existing_item_id": existing_item_id,
+            "new_fact": new_fact,
+            "auto_resolve": auto_resolve,
+            "strategy": strategy,
+            "use_wikipedia": use_wikipedia,
+            "use_llm": use_llm
+        }
+        return self._request("POST", "/reasoning/resolve", json_body=body)
+
+    def list_conflicts(
+        self,
+        needs_review: bool = True,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        List memory items that have unresolved conflicts.
+        
+        Args:
+            needs_review: Filter to items needing review
+            limit: Maximum number of items to return
+            
+        Returns:
+            List of conflicting items with details
+            
+        Example:
+            ```python
+            conflicts = client.list_conflicts()
+            for item in conflicts["conflicts"]:
+                print(f"{item['item_id']}: {item['review_reason']}")
+            ```
+        """
+        params = {
+            "needs_review": needs_review,
+            "limit": limit
+        }
+        return self._request("GET", "/reasoning/conflicts", params=params)
+
+    def get_low_confidence_items(
+        self,
+        threshold: float = 0.5,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Get items with confidence below threshold.
+        
+        Useful for finding facts that have been challenged multiple times
+        and may need review or removal.
+        
+        Args:
+            threshold: Confidence threshold (0.0-1.0)
+            limit: Maximum items to return
+            
+        Returns:
+            Items sorted by confidence (lowest first)
+            
+        Example:
+            ```python
+            low_conf = client.get_low_confidence_items(threshold=0.3)
+            for item in low_conf["items"]:
+                print(f"{item['item_id']}: {item['confidence']:.2f} ({item['challenge_count']} challenges)")
+            ```
+        """
+        params = {
+            "threshold": threshold,
+            "limit": limit
+        }
+        return self._request("GET", "/reasoning/low-confidence", params=params)
+
+    def get_confidence_history(
+        self,
+        item_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get the confidence decay history for a specific item.
+        
+        Args:
+            item_id: Memory item ID
+            
+        Returns:
+            Confidence history with timestamps, reasons, and conflicting facts
+            
+        Example:
+            ```python
+            history = client.get_confidence_history("item_123")
+            print(f"Current confidence: {history['current_confidence']}")
+            for event in history["history"]:
+                print(f"  {event['timestamp']}: {event['old_confidence']:.2f} -> {event['new_confidence']:.2f}")
+                print(f"    Reason: {event['reason']}")
+            ```
+        """
+        return self._request("GET", f"/reasoning/confidence-history/{item_id}")
 
     def _request(
         self,

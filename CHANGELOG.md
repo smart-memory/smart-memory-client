@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.19] - 2025-11-25
+## [0.1.21] - 2025-11-25
 
 ### 🎯 Interface Alignment with Core Library
 
