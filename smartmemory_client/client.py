@@ -275,6 +275,7 @@ class SmartMemoryClient:
         top_k: int = 5,
         memory_type: Optional[str] = None,
         use_ssg: Optional[bool] = None,
+        enable_hybrid: Optional[bool] = True,
     ) -> List[MemoryItem]:
         """
         Search for memory items using semantic matching.
@@ -285,17 +286,22 @@ class SmartMemoryClient:
             memory_type: Type of memory to search (optional)
             use_ssg: Use Similarity Graph Traversal for better multi-hop reasoning (optional)
                     If None, uses config default. If True, uses SSG. If False, uses basic vector search.
+            enable_hybrid: Enable hybrid retrieval (vector + keyword search with RRF fusion).
+                          Default: True. Set to False for vector-only search.
 
         Returns:
             List of MemoryItem objects
 
         Example:
             ```python
-            # Simple search
+            # Simple search (hybrid enabled by default)
             results = client.search("AI concepts", top_k=10)
 
             # Search with SSG for better multi-hop reasoning
             results = client.search("AI concepts", top_k=10, use_ssg=True)
+
+            # Vector-only search (disable hybrid)
+            results = client.search("AI concepts", enable_hybrid=False)
 
             # Search specific memory type
             results = client.search("conversation", memory_type="episodic")
@@ -312,6 +318,7 @@ class SmartMemoryClient:
         body_dict: Dict[str, Any] = {
             "query": query,
             "top_k": top_k,
+            "enable_hybrid": enable_hybrid,
         }
         if memory_type is not None:
             body_dict["memory_type"] = memory_type
