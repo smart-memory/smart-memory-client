@@ -2185,6 +2185,196 @@ class SmartMemoryClient:
         """
         return self._request("GET", f"/reasoning/confidence-history/{item_id}")
 
+    # =========================================================================
+    # Reasoning Traces (System 2 Memory)
+    # =========================================================================
+
+    def extract_reasoning(
+        self,
+        content: str,
+        min_steps: int = 2,
+        min_quality_score: float = 0.4,
+        use_llm_detection: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Extract reasoning traces from content.
+        
+        Detects chain-of-thought reasoning patterns (Thought:/Action:/Observation:).
+        
+        Args:
+            content: Content to extract reasoning from
+            min_steps: Minimum steps required for a valid trace
+            min_quality_score: Minimum quality score threshold
+            use_llm_detection: Use LLM for implicit reasoning detection
+            
+        Returns:
+            Extraction result with trace, has_reasoning, quality_score, step_count
+            
+        Example:
+            ```python
+            result = client.extract_reasoning('''
+                Thought: I need to analyze this bug.
+                Action: Let me search for the function.
+                Observation: Found the issue in line 42.
+                Conclusion: The fix is to add a null check.
+            ''')
+            if result['has_reasoning']:
+                print(f"Found {result['step_count']} reasoning steps")
+            ```
+        """
+        body = {
+            "content": content,
+            "min_steps": min_steps,
+            "min_quality_score": min_quality_score,
+            "use_llm_detection": use_llm_detection,
+        }
+        return self._request("POST", "/memory/reasoning-traces/extract", json_body=body)
+
+    def store_reasoning_trace(
+        self,
+        trace: Dict[str, Any],
+        artifact_ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Store a reasoning trace as a memory item.
+        
+        Creates a 'reasoning' type memory with CAUSES relations to artifacts.
+        
+        Args:
+            trace: Reasoning trace dict with trace_id, steps, task_context
+            artifact_ids: IDs of artifacts this reasoning produced
+            
+        Returns:
+            Storage result with trace_id, step_count, artifact_links
+            
+        Example:
+            ```python
+            result = client.store_reasoning_trace(
+                trace={
+                    "trace_id": "trace_123",
+                    "steps": [
+                        {"type": "thought", "content": "Analyzing the problem"},
+                        {"type": "conclusion", "content": "Found the solution"},
+                    ],
+                    "task_context": {"goal": "Fix bug", "domain": "python"},
+                },
+                artifact_ids=["code_fix_456"]
+            )
+            ```
+        """
+        body = {
+            "trace": trace,
+            "artifact_ids": artifact_ids,
+        }
+        return self._request("POST", "/memory/reasoning-traces/store", json_body=body)
+
+    def query_reasoning(
+        self,
+        query: str,
+        artifact_id: Optional[str] = None,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Query reasoning traces.
+        
+        Use cases:
+        - "Why did I choose Python?" → finds reasoning traces about Python decisions
+        - artifact_id → finds reasoning that led to this artifact
+        
+        Args:
+            query: Query like "why did I choose X?"
+            artifact_id: Find reasoning that led to this artifact
+            limit: Maximum traces to return
+            
+        Returns:
+            Query result with traces list and count
+            
+        Example:
+            ```python
+            # Find reasoning about a decision
+            result = client.query_reasoning("why did I use async/await?")
+            for trace in result['traces']:
+                print(f"Trace {trace['trace_id']}: {trace['content'][:100]}...")
+            
+            # Find reasoning that led to an artifact
+            result = client.query_reasoning("", artifact_id="code_123")
+            ```
+        """
+        body = {
+            "query": query,
+            "artifact_id": artifact_id,
+            "limit": limit,
+        }
+        return self._request("POST", "/memory/reasoning-traces/query", json_body=body)
+
+    def get_reasoning_trace(self, trace_id: str) -> Dict[str, Any]:
+        """
+        Get a specific reasoning trace by ID.
+        
+        Args:
+            trace_id: Reasoning trace ID
+            
+        Returns:
+            Full reasoning trace with steps, task_context, artifact_ids
+        """
+        return self._request("GET", f"/memory/reasoning-traces/{trace_id}")
+
+    # =========================================================================
+    # Synthesis Evolution (Opinions & Observations)
+    # =========================================================================
+
+    def synthesize_opinions(self) -> Dict[str, Any]:
+        """
+        Run opinion synthesis: detect patterns in episodic memories and form opinions.
+        
+        Creates 'opinion' type memories with confidence scores based on recurring patterns.
+        
+        Returns:
+            Synthesis result with status, message, timestamp
+            
+        Example:
+            ```python
+            result = client.synthesize_opinions()
+            print(f"Status: {result['status']}")
+            ```
+        """
+        return self._request("POST", "/memory/evolution/synthesize/opinions")
+
+    def synthesize_observations(self) -> Dict[str, Any]:
+        """
+        Run observation synthesis: create entity summaries from scattered facts.
+        
+        Creates 'observation' type memories that summarize what we know about entities.
+        
+        Returns:
+            Synthesis result with status, message, timestamp
+            
+        Example:
+            ```python
+            result = client.synthesize_observations()
+            print(f"Status: {result['status']}")
+            ```
+        """
+        return self._request("POST", "/memory/evolution/synthesize/observations")
+
+    def reinforce_opinions(self) -> Dict[str, Any]:
+        """
+        Run opinion reinforcement: update confidence scores based on new evidence.
+        
+        Reinforces or contradicts existing opinions based on recent episodic memories.
+        Archives opinions that fall below confidence threshold.
+        
+        Returns:
+            Reinforcement result with status, message, timestamp
+            
+        Example:
+            ```python
+            result = client.reinforce_opinions()
+            print(f"Status: {result['status']}")
+            ```
+        """
+        return self._request("POST", "/memory/evolution/reinforce/opinions")
+
     def _request(
         self,
         method: str,

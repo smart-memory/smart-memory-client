@@ -23,11 +23,20 @@ class MemoryItem:
     updated_at: Optional[str] = None
     embedding: Optional[List[float]] = None
     
-    # Additional fields from core MemoryItem
+    # Tenancy fields from core MemoryItem
     user_id: Optional[str] = None
     workspace_id: Optional[str] = None
     tenant_id: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    
+    # Bi-temporal fields (aligned with core SDK)
+    valid_start_time: Optional[str] = None  # ISO format datetime
+    valid_end_time: Optional[str] = None    # ISO format datetime
+    transaction_time: Optional[str] = None  # ISO format datetime
+    
+    # Extracted data (populated by ingestion pipeline)
+    entities: Optional[List[Dict[str, Any]]] = None
+    relations: Optional[List[Dict[str, Any]]] = None
     
     def __getitem__(self, key: str) -> Any:
         """Dict-like access for compatibility."""
@@ -68,6 +77,13 @@ class MemoryItem:
             workspace_id=data.get("workspace_id"),
             tenant_id=data.get("tenant_id"),
             tags=data.get("tags", []),
+            # Bi-temporal fields
+            valid_start_time=data.get("valid_start_time"),
+            valid_end_time=data.get("valid_end_time"),
+            transaction_time=data.get("transaction_time"),
+            # Extracted data
+            entities=data.get("entities"),
+            relations=data.get("relations"),
         )
     
     def __repr__(self) -> str:

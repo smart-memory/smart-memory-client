@@ -6,9 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Reasoning Traces (System 2 Memory)
+- `extract_reasoning()` - Extract reasoning traces from content
+- `store_reasoning_trace()` - Store reasoning trace with artifact links
+- `query_reasoning()` - Query reasoning traces ("why" queries)
+- `get_reasoning_trace()` - Get specific reasoning trace by ID
+
+#### Synthesis Evolution
+- `synthesize_opinions()` - Form opinions from episodic patterns
+- `synthesize_observations()` - Create entity summaries from facts
+- `reinforce_opinions()` - Update opinion confidence based on evidence
+
 ---
 
-## [0.1.25] - 2025-11-25
+## [0.2.0] - 2025-11-25
 
 ### 🎯 Interface Alignment with Core Library
 

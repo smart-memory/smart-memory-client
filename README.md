@@ -272,6 +272,57 @@ result = client.provide_feedback(
 )
 ```
 
+### Reasoning Traces (System 2 Memory)
+
+```python
+# Extract reasoning from content
+result = client.extract_reasoning('''
+    Thought: I need to analyze this bug.
+    Action: Let me search for the function.
+    Observation: Found the issue in line 42.
+    Conclusion: The fix is to add a null check.
+''')
+if result['has_reasoning']:
+    print(f"Found {result['step_count']} reasoning steps")
+
+# Store a reasoning trace
+result = client.store_reasoning_trace(
+    trace={
+        "trace_id": "trace_123",
+        "steps": [
+            {"type": "thought", "content": "Analyzing the problem"},
+            {"type": "conclusion", "content": "Found the solution"},
+        ],
+        "task_context": {"goal": "Fix bug", "domain": "python"},
+    },
+    artifact_ids=["code_fix_456"]  # Link to resulting artifacts
+)
+
+# Query reasoning traces ("why" queries)
+result = client.query_reasoning("why did I use async/await?")
+for trace in result['traces']:
+    print(f"Trace {trace['trace_id']}: {trace['content'][:100]}...")
+
+# Get specific reasoning trace
+trace = client.get_reasoning_trace("trace_123")
+```
+
+### Synthesis Evolution (Opinions & Observations)
+
+```python
+# Form opinions from episodic patterns
+result = client.synthesize_opinions()
+print(f"Status: {result['status']}")
+
+# Create entity summaries from scattered facts
+result = client.synthesize_observations()
+print(f"Status: {result['status']}")
+
+# Update opinion confidence based on new evidence
+result = client.reinforce_opinions()
+print(f"Status: {result['status']}")
+```
+
 ### Health Check
 
 ```python
