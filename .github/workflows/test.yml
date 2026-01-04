@@ -45,3 +45,10 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+
+      - name: Notify Discord
+        if: always()
+        uses: smart-memory/smart-memory-infra/.github/actions/discord-notify@main
+        with:
+          discord_webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
