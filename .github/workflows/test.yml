@@ -47,7 +47,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Notify Discord
-        if: ${{ always() && secrets.DISCORD_WEBHOOK != '' }}
+        if: always()
         uses: smart-memory/smart-memory-infra/.github/actions/discord-notify@main
         with:
           discord_webhook: ${{ secrets.DISCORD_WEBHOOK }}
