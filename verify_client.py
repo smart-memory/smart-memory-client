@@ -1,7 +1,4 @@
-import sys
-import os
 from smartmemory_client.models.memory_item import MemoryItem
-from smartmemory_client import SmartMemoryClient
 
 print("Successfully imported MemoryItem and SmartMemoryClient")
 

@@ -1,6 +1,6 @@
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from smartmemory_client.client import SmartMemoryClient
 
 @pytest.fixture

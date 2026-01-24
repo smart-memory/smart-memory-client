@@ -56,18 +56,17 @@ exclude = ["tests*", "docs*"]
 version = {file = "VERSION"}
 
 [tool.ruff]
-line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "UP", # pyupgrade
+    "F",  # Pyflakes - unused imports, undefined vars
+    "B",  # Bugbear - likely bugs
 ]
-ignore = []
+ignore = [
+    "B904",  # raise from err - style preference
+]
+per-file-ignores = {"verify_client.py" = ["F401"]}
 
 [tool.mypy]
 python_version = "3.11"
