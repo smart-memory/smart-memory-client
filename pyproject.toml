@@ -81,3 +81,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=smartmemory_client --cov-report=term-missing"
+markers = [
+    "integration: marks tests as integration tests (require running service)"
+]
