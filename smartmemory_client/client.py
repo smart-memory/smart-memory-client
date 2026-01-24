@@ -1853,6 +1853,18 @@ class SmartMemoryClient:
         """Get usage dashboard with current quotas and limits."""
         return self._request("GET", "/usage/dashboard")
 
+    def get_usage_limits(self) -> Dict[str, Any]:
+        """Get quota limits for current subscription tier."""
+        return self._request("GET", "/usage/limits")
+
+    def get_current_usage(self) -> Dict[str, Any]:
+        """Get current usage statistics."""
+        return self._request("GET", "/usage/current")
+
+    def get_available_tiers(self) -> Dict[str, Any]:
+        """Get available subscription tiers."""
+        return self._request("GET", "/usage/tiers")
+
     # ============================================================================
     # Webhooks
     # ============================================================================

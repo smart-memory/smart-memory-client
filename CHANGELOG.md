@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Package structure**: Created missing `models/__init__.py` for proper model exports
+- **Module exports**: Fixed `__init__.py` to properly export `MemoryItem` and `ConversationContextModel`
+- **Version detection**: Use `importlib.metadata` for installed package version with fallback to VERSION file
+- **Test assertions**: Fixed API path assertions to match actual client implementation
+
 ### Added
+
+#### Usage Methods
+- `get_usage_limits()` - Get quota limits for current subscription tier
+- `get_current_usage()` - Get current usage statistics
+- `get_available_tiers()` - Get available subscription tiers
 
 #### Reasoning Traces (System 2 Memory)
 - `extract_reasoning()` - Extract reasoning traces from content

@@ -32,17 +32,28 @@ For more information:
     https://docs.smartmemory.dev
 """
 
-from pathlib import Path
 from smartmemory_client.client import SmartMemoryClient, SmartMemoryClientError
+from smartmemory_client.models import MemoryItem, ConversationContextModel
 
-def _get_version() -> str:
-    """Get version from VERSION file."""
-    version_file = Path(__file__).parent.parent / "VERSION"
+try:
+    from importlib.metadata import version, PackageNotFoundError
     try:
-        with open(version_file, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return "unknown"  # Fallback
+        __version__ = version("smartmemory-client")
+    except PackageNotFoundError:
+        # Package not installed, try reading VERSION file (development mode)
+        from pathlib import Path
+        version_file = Path(__file__).parent.parent / "VERSION"
+        try:
+            __version__ = version_file.read_text().strip()
+        except FileNotFoundError:
+            __version__ = "0.0.0-dev"
+except ImportError:
+    __version__ = "0.0.0-dev"
 
-__version__ = _get_version()
-__all__ = ["SmartMemoryClient", "SmartMemoryClientError"]
+__all__ = [
+    "SmartMemoryClient",
+    "SmartMemoryClientError",
+    "MemoryItem",
+    "ConversationContextModel",
+    "__version__",
+]
