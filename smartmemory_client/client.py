@@ -66,6 +66,7 @@ class SmartMemoryClient:
         )
         ```
     """
+
     def __init__(
         self,
         base_url: Optional[str] = None,
@@ -110,7 +111,9 @@ class SmartMemoryClient:
             logger.warning("No API key found in environment or parameters")
 
         # Determine team ID from parameter or environment (default dev team)
-        self.team_id = team_id or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
+        self.team_id = (
+            team_id or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
+        )
         self.verify_ssl = verify_ssl
 
         # Build default headers
@@ -146,9 +149,7 @@ class SmartMemoryClient:
         """
         try:
             response = httpx.get(
-                f"{self.base_url}/health",
-                headers=self.headers,
-                timeout=self.timeout
+                f"{self.base_url}/health", headers=self.headers, timeout=self.timeout
             )
             response.raise_for_status()
             return {"status": "healthy"}
@@ -163,7 +164,9 @@ class SmartMemoryClient:
         memory_type: str = "semantic",
         metadata: Optional[Dict[str, Any]] = None,
         use_pipeline: bool = True,
-        conversation_context: Optional[Union[ConversationContextModel, Dict[str, Any]]] = None,
+        conversation_context: Optional[
+            Union[ConversationContextModel, Dict[str, Any]]
+        ] = None,
     ) -> str:
         """
         Add a memory item to the system.
@@ -218,20 +221,23 @@ class SmartMemoryClient:
             if isinstance(conversation_context, ConversationContextModel):
                 # Convert dataclass to dict
                 from dataclasses import asdict
+
                 body_dict["conversation_context"] = asdict(conversation_context)
             else:
                 body_dict["conversation_context"] = conversation_context
-        
+
         try:
             result = self._request("POST", "/memory/add", json_body=body_dict)
         except SmartMemoryClientError as e:
             if "401" in str(e):
-                 logger.warning("Authentication required for add. Set SMARTMEMORY_API_KEY environment variable.")
+                logger.warning(
+                    "Authentication required for add. Set SMARTMEMORY_API_KEY environment variable."
+                )
             raise
-        
+
         if not result:
             raise SmartMemoryClientError("Failed to add memory")
-            
+
         if isinstance(result, dict):
             return result.get("id")
         elif hasattr(result, "id"):
@@ -347,7 +353,7 @@ class SmartMemoryClient:
             results.append(MemoryItem.from_dict(item_dict))
 
         return results
-    
+
     def search_advanced(
         self,
         query: str,
@@ -357,9 +363,9 @@ class SmartMemoryClient:
     ) -> List[MemoryItem]:
         """
         Advanced search using Similarity Graph Traversal (SSG) algorithms.
-        
+
         SSG provides superior multi-hop reasoning and contextual retrieval compared to basic vector search.
-        
+
         Args:
             query: Search query
             algorithm: SSG algorithm to use:
@@ -367,25 +373,25 @@ class SmartMemoryClient:
                       - "triangulation_fulldim": Best for high precision (highest faithfulness)
             max_results: Maximum number of results to return
             use_ssg: Enable SSG traversal (vs basic vector search)
-        
+
         Returns:
             List of MemoryItem objects
-        
+
         Example:
             ```python
             # Best for general queries
             results = client.search_advanced("AI concepts", algorithm="query_traversal")
-            
+
             # Best for high precision factual queries
             results = client.search_advanced("specific fact", algorithm="triangulation_fulldim")
-            
+
             # Disable SSG (fallback to basic search)
             results = client.search_advanced("query", use_ssg=False)
-            
+
             for item in results:
                 print(f"{item.item_id}: {item.content}")
             ```
-        
+
         Note:
             Based on research: github.com/glacier-creative-git/similarity-graph-traversal-semantic-rag-research
         """
@@ -393,20 +399,23 @@ class SmartMemoryClient:
             "query": query,
             "algorithm": algorithm,
             "max_results": max_results,
-            "use_ssg": use_ssg
+            "use_ssg": use_ssg,
         }
-        
+
         data = self._request("POST", "/memory/search/advanced", json_body=payload)
-        
+
         # Parse response using factory method
         results = []
         for item_dict in data.get("results", []):
             results.append(MemoryItem.from_dict(item_dict))
-        
+
         return results
 
     def update(
-        self, item_id: str, content: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None
+        self,
+        item_id: str,
+        content: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Update a memory item.
@@ -502,15 +511,13 @@ class SmartMemoryClient:
             "extractor_name": extractor_name,
             "context": context or {},
         }
-        
+
         try:
             return self._request("POST", "/memory/ingest", json_body=body_dict)
         except Exception as e:
             raise SmartMemoryClientError(f"Failed to ingest content: {str(e)}")
 
-    def link(
-        self, source_id: str, target_id: str, link_type: str = "RELATED"
-    ) -> bool:
+    def link(self, source_id: str, target_id: str, link_type: str = "RELATED") -> bool:
         """
         Create a link between two memory items.
 
@@ -534,7 +541,7 @@ class SmartMemoryClient:
             "target_id": target_id,
             "link_type": link_type,
         }
-        
+
         try:
             self._request("POST", "/memory/link", json_body=body_dict)
             return True
@@ -548,7 +555,7 @@ class SmartMemoryClient:
         source_id: str,
         target_id: str,
         relation_type: str,
-        properties: Optional[Dict[str, Any]] = None
+        properties: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Add a direct edge between two nodes in the graph.
@@ -579,7 +586,7 @@ class SmartMemoryClient:
             "source_id": source_id,
             "target_id": target_id,
             "relation_type": relation_type,
-            "properties": properties or {}
+            "properties": properties or {},
         }
         return self._request("POST", "/memory/edge", json_body=body)
 
@@ -697,35 +704,33 @@ class SmartMemoryClient:
         return self._request("POST", "/memory/feedback", json_body=body)
 
     def cluster(
-        self,
-        distance_threshold: float = 0.1,
-        dry_run: bool = False
+        self, distance_threshold: float = 0.1, dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Run entity clustering/deduplication for the workspace.
-        
+
         Args:
             distance_threshold: Similarity threshold (0.0-1.0, default 0.1)
             dry_run: If true, preview clusters without merging
-            
+
         Returns:
             Clustering results (merged_count, clusters_found, etc.)
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/clustering/run"
         headers = {"X-Team-Id": self.team_id}
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
-        params = {
-            "distance_threshold": distance_threshold,
-            "dry_run": dry_run
-        }
-        
+
+        params = {"distance_threshold": distance_threshold, "dry_run": dry_run}
+
         try:
-            http_response = httpx.post(url, params=params, headers=headers, timeout=60.0)
+            http_response = httpx.post(
+                url, params=params, headers=headers, timeout=60.0
+            )
             http_response.raise_for_status()
             return http_response.json()
         except httpx.HTTPStatusError as e:
@@ -736,18 +741,19 @@ class SmartMemoryClient:
     def get_clustering_stats(self) -> Dict[str, Any]:
         """
         Get clustering statistics for the workspace.
-        
+
         Returns:
             Clustering statistics
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/clustering/stats"
         headers = {"X-Team-Id": self.team_id}
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         try:
             http_response = httpx.get(url, headers=headers, timeout=30.0)
             http_response.raise_for_status()
@@ -756,40 +762,32 @@ class SmartMemoryClient:
             raise SmartMemoryClientError(f"Failed to get clustering stats: {e}")
         except Exception as e:
             raise SmartMemoryClientError(f"Failed to get clustering stats: {str(e)}")
+
     def ground(
-        self,
-        item_id: str,
-        source_url: str,
-        validation: Optional[Dict[str, Any]] = None
+        self, item_id: str, source_url: str, validation: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Ground a memory item to an external source for provenance.
-        
+
         Args:
             item_id: Memory item ID
             source_url: URL of the source
             validation: Optional validation data
-            
+
         Returns:
             Result message
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/memory/{item_id}/ground"
-        headers = {
-            "Content-Type": "application/json",
-            "X-Team-Id": self.team_id
-        }
-        
+        headers = {"Content-Type": "application/json", "X-Team-Id": self.team_id}
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
-        body = {
-            "item_id": item_id,
-            "source_url": source_url,
-            "validation": validation
-        }
-        
+
+        body = {"item_id": item_id, "source_url": source_url, "validation": validation}
+
         try:
             http_response = httpx.post(url, json=body, headers=headers, timeout=30.0)
             http_response.raise_for_status()
@@ -802,21 +800,22 @@ class SmartMemoryClient:
     def get_summarize_prompt(self, item_id: str) -> Dict[str, Any]:
         """
         Generate a prompt template for summarizing a memory item.
-        
+
         Args:
             item_id: Memory item ID
-            
+
         Returns:
             Prompt template and metadata
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/memory/{item_id}/prompt/summarize"
         headers = {"X-Team-Id": self.team_id}
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         try:
             http_response = httpx.get(url, headers=headers, timeout=30.0)
             http_response.raise_for_status()
@@ -829,21 +828,22 @@ class SmartMemoryClient:
     def get_analyze_prompt(self, item_id: str) -> Dict[str, Any]:
         """
         Generate a prompt template for analyzing memory connections.
-        
+
         Args:
             item_id: Memory item ID
-            
+
         Returns:
             Prompt template and metadata
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/memory/{item_id}/prompt/analyze"
         headers = {"X-Team-Id": self.team_id}
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         try:
             http_response = httpx.get(url, headers=headers, timeout=30.0)
             http_response.raise_for_status()
@@ -861,34 +861,37 @@ class SmartMemoryClient:
     ) -> Dict[str, Any]:
         """
         Ingest content with full synchronous entity/relation extraction pipeline.
-        
+
         Args:
             content: Content to ingest
             extractor_name: Name of the extractor to use (default: "llm")
             context: Additional context information
-            
+
         Returns:
             Full ingestion result with entities and relations
         """
         # Make direct HTTP request
         import httpx
+
         url = f"{self.base_url}/memory/ingest/full"
         headers = {
             "Content-Type": "application/json",
             "X-Team-Id": self.team_id,
         }
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        
+
         body_dict = {
             "content": content,
             "extractor_name": extractor_name,
             "context": context or {},
         }
-        
+
         try:
-            http_response = httpx.post(url, json=body_dict, headers=headers, timeout=60.0)
+            http_response = httpx.post(
+                url, json=body_dict, headers=headers, timeout=60.0
+            )
             http_response.raise_for_status()
             return http_response.json()
         except httpx.HTTPStatusError as e:
@@ -963,7 +966,9 @@ class SmartMemoryClient:
             print(summary["summary"]["topic_distribution"])
             ```
         """
-        return self._request("GET", "/memory/admin/summarize", params={"max_items": max_items})
+        return self._request(
+            "GET", "/memory/admin/summarize", params={"max_items": max_items}
+        )
 
     # ============================================================================
     # Agents
@@ -974,14 +979,14 @@ class SmartMemoryClient:
         name: str,
         description: Optional[str] = None,
         agent_config: Optional[Dict[str, Any]] = None,
-        roles: Optional[List[str]] = None
+        roles: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Create a new AI agent."""
         body = {
             "name": name,
             "description": description,
             "agent_config": agent_config or {},
-            "roles": roles or ["user"]
+            "roles": roles or ["user"],
         }
         return self._request("POST", "/agents", json_body=body)
 
@@ -1007,19 +1012,21 @@ class SmartMemoryClient:
 
     def detect_drift(self, time_window_days: int = 30) -> Dict[str, Any]:
         """Run concept drift detection."""
-        return self._request("GET", "/analytics/drift", params={"time_window_days": time_window_days})
+        return self._request(
+            "GET", "/analytics/drift", params={"time_window_days": time_window_days}
+        )
 
     def detect_bias(
         self,
         protected_attributes: Optional[List[str]] = None,
         sentiment_analysis: Optional[bool] = None,
-        topic_analysis: Optional[bool] = None
+        topic_analysis: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Run bias detection."""
         body = {
             "protected_attributes": protected_attributes,
             "sentiment_analysis": sentiment_analysis,
-            "topic_analysis": topic_analysis
+            "topic_analysis": topic_analysis,
         }
         return self._request("POST", "/analytics/bias", json_body=body)
 
@@ -1031,13 +1038,13 @@ class SmartMemoryClient:
         self,
         name: str,
         scopes: Optional[List[str]] = None,
-        expires_in_days: Optional[int] = None
+        expires_in_days: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Create a new API key."""
         body = {
             "name": name,
             "scopes": scopes or ["read:memories"],
-            "expires_in_days": expires_in_days
+            "expires_in_days": expires_in_days,
         }
         return self._request("POST", "/api-keys", json_body=body)
 
@@ -1053,7 +1060,9 @@ class SmartMemoryClient:
     # Auth
     # ============================================================================
 
-    def signup(self, email: str, password: str, full_name: Optional[str] = None) -> Dict[str, Any]:
+    def signup(
+        self, email: str, password: str, full_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Register a new user."""
         body = {"email": email, "password": password, "full_name": full_name}
         return self._request("POST", "/auth/signup", json_body=body)
@@ -1063,19 +1072,19 @@ class SmartMemoryClient:
         # Service expects 'email', so we map username to email
         data = {"email": username, "password": password}
         response = self._request("POST", "/auth/login", json_body=data)
-        
+
         # Handle both flat and nested token responses
         if response:
             if "access_token" in response:
                 self.api_key = response["access_token"]
             elif "tokens" in response and "access_token" in response["tokens"]:
                 self.api_key = response["tokens"]["access_token"]
-            
+
             # Update team_id if available in user info
             if "user" in response and "default_team_id" in response["user"]:
                 self.team_id = response["user"]["default_team_id"]
                 self.headers["X-Team-Id"] = self.team_id
-                
+
         return response
 
     def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
@@ -1104,13 +1113,13 @@ class SmartMemoryClient:
         self,
         openai_key: Optional[str] = None,
         anthropic_key: Optional[str] = None,
-        groq_key: Optional[str] = None
+        groq_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update user's LLM provider API keys."""
         body = {
             "openai_key": openai_key,
             "anthropic_key": anthropic_key,
-            "groq_key": groq_key
+            "groq_key": groq_key,
         }
         return self._request("PUT", "/auth/llm-keys", json_body=body)
 
@@ -1120,7 +1129,9 @@ class SmartMemoryClient:
 
     def request_password_reset(self, email: str) -> Dict[str, Any]:
         """Request a password reset email."""
-        return self._request("POST", "/auth/password-reset/request", json_body={"email": email})
+        return self._request(
+            "POST", "/auth/password-reset/request", json_body={"email": email}
+        )
 
     def confirm_password_reset(self, token: str, new_password: str) -> Dict[str, Any]:
         """Reset password using a valid reset token."""
@@ -1151,20 +1162,14 @@ class SmartMemoryClient:
         self,
         query: str = "*",
         top_k: int = 100,
-        memory_items: Optional[List[Dict[str, Any]]] = None
+        memory_items: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Run governance analysis."""
-        body = {
-            "query": query,
-            "top_k": top_k,
-            "memory_items": memory_items or []
-        }
+        body = {"query": query, "top_k": top_k, "memory_items": memory_items or []}
         return self._request("POST", "/governance/run_analysis", json_body=body)
 
     def list_violations(
-        self,
-        severity: Optional[str] = None,
-        auto_fixable_only: bool = False
+        self, severity: Optional[str] = None, auto_fixable_only: bool = False
     ) -> Dict[str, Any]:
         """List violations available for review."""
         params = {"severity": severity, "auto_fixable_only": auto_fixable_only}
@@ -1179,14 +1184,14 @@ class SmartMemoryClient:
         violation_id: str,
         action: str = "approve",
         rationale: str = "",
-        decided_by: str = "human"
+        decided_by: str = "human",
     ) -> Dict[str, Any]:
         """Apply a governance decision for a violation."""
         body = {
             "violation_id": violation_id,
             "action": action,
             "rationale": rationale,
-            "decided_by": decided_by
+            "decided_by": decided_by,
         }
         return self._request("POST", "/governance/apply_decision", json_body=body)
 
@@ -1207,13 +1212,13 @@ class SmartMemoryClient:
         self,
         raw_chunks: List[Dict[str, str]],
         registry_id: str = "default",
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Run ontology inference over provided raw text chunks."""
         body = {
             "registry_id": registry_id,
             "raw_chunks": raw_chunks,
-            "params": params or {}
+            "params": params or {},
         }
         return self._request("POST", "/memory/ontology/inference/run", json_body=body)
 
@@ -1222,77 +1227,72 @@ class SmartMemoryClient:
         return self._request("GET", "/memory/ontology/registries")
 
     def create_registry(
-        self,
-        name: str,
-        description: str = "",
-        domain: str = "general"
+        self, name: str, description: str = "", domain: str = "general"
     ) -> Dict[str, Any]:
         """Create a new ontology registry."""
-        body = {
-            "name": name,
-            "description": description,
-            "domain": domain
-        }
+        body = {"name": name, "description": description, "domain": domain}
         return self._request("POST", "/memory/ontology/registries", json_body=body)
 
     def get_registry_snapshot(
-        self,
-        registry_id: str,
-        version: Optional[str] = None
+        self, registry_id: str, version: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get a snapshot of a registry (current or specific version)."""
         params = {"version": version} if version else None
-        return self._request("GET", f"/memory/ontology/registry/{registry_id}/snapshot", params=params)
+        return self._request(
+            "GET", f"/memory/ontology/registry/{registry_id}/snapshot", params=params
+        )
 
     def apply_changeset(
         self,
         registry_id: str,
         changeset: Dict[str, Any],
         base_version: str = "",
-        message: str = ""
+        message: str = "",
     ) -> Dict[str, Any]:
         """Apply a changeset to create a new version of the registry."""
         body = {
             "base_version": base_version,
             "changeset": changeset,
-            "message": message
+            "message": message,
         }
-        return self._request("POST", f"/memory/ontology/registry/{registry_id}/apply", json_body=body)
+        return self._request(
+            "POST", f"/memory/ontology/registry/{registry_id}/apply", json_body=body
+        )
 
     def list_registry_snapshots(
-        self,
-        registry_id: str,
-        limit: int = 50
+        self, registry_id: str, limit: int = 50
     ) -> Dict[str, Any]:
         """List snapshots for a registry."""
-        return self._request("GET", f"/memory/ontology/registry/{registry_id}/snapshots", params={"limit": limit})
+        return self._request(
+            "GET",
+            f"/memory/ontology/registry/{registry_id}/snapshots",
+            params={"limit": limit},
+        )
 
     def get_registry_changelog(
-        self,
-        registry_id: str,
-        limit: int = 50
+        self, registry_id: str, limit: int = 50
     ) -> Dict[str, Any]:
         """Get change history for a registry."""
-        return self._request("GET", f"/memory/ontology/registry/{registry_id}/changelog", params={"limit": limit})
+        return self._request(
+            "GET",
+            f"/memory/ontology/registry/{registry_id}/changelog",
+            params={"limit": limit},
+        )
 
     def rollback_registry(
-        self,
-        registry_id: str,
-        target_version: str = "",
-        message: str = ""
+        self, registry_id: str, target_version: str = "", message: str = ""
     ) -> Dict[str, Any]:
         """Rollback registry to a previous version."""
-        body = {
-            "target_version": target_version,
-            "message": message
-        }
-        return self._request("POST", f"/memory/ontology/registry/{registry_id}/rollback", json_body=body)
+        body = {"target_version": target_version, "message": message}
+        return self._request(
+            "POST", f"/memory/ontology/registry/{registry_id}/rollback", json_body=body
+        )
 
     def export_registry(
         self,
         registry_id: str,
         version: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Export a registry snapshot."""
         params = {}
@@ -1300,20 +1300,18 @@ class SmartMemoryClient:
             params["version"] = version
         if user_id:
             params["user_id"] = user_id
-        return self._request("GET", f"/memory/ontology/registry/{registry_id}/export", params=params)
+        return self._request(
+            "GET", f"/memory/ontology/registry/{registry_id}/export", params=params
+        )
 
     def import_registry(
-        self,
-        registry_id: str,
-        data: Dict[str, Any],
-        message: str = ""
+        self, registry_id: str, data: Dict[str, Any], message: str = ""
     ) -> Dict[str, Any]:
         """Import data into a registry."""
-        body = {
-            "data": data,
-            "message": message
-        }
-        return self._request("POST", f"/memory/ontology/registry/{registry_id}/import", json_body=body)
+        body = {"data": data, "message": message}
+        return self._request(
+            "POST", f"/memory/ontology/registry/{registry_id}/import", json_body=body
+        )
 
     def list_enrichment_providers(self) -> Dict[str, Any]:
         """List available enrichment providers."""
@@ -1323,14 +1321,10 @@ class SmartMemoryClient:
         self,
         entities: List[str],
         provider: str = "wikipedia",
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run enrichment operation using specified provider."""
-        body = {
-            "provider": provider,
-            "entities": entities,
-            "user_id": user_id
-        }
+        body = {"provider": provider, "entities": entities, "user_id": user_id}
         return self._request("POST", "/memory/ontology/enrichment/run", json_body=body)
 
     def run_grounding_ontology(
@@ -1338,14 +1332,14 @@ class SmartMemoryClient:
         item_id: str,
         candidates: List[str],
         grounder: str = "wikipedia",
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run grounding operation using specified grounder."""
         body = {
             "grounder": grounder,
             "item_id": item_id,
             "candidates": candidates,
-            "user_id": user_id
+            "user_id": user_id,
         }
         return self._request("POST", "/memory/ontology/grounding/run", json_body=body)
 
@@ -1354,73 +1348,61 @@ class SmartMemoryClient:
     # ============================================================================
 
     def run_extraction_stage(
-        self,
-        content: str,
-        extractor_name: str = "llm"
+        self, content: str, extractor_name: str = "llm"
     ) -> Dict[str, Any]:
         """Run extraction pipeline stage."""
-        body = {
-            "content": content,
-            "extractor_name": extractor_name
-        }
+        body = {"content": content, "extractor_name": extractor_name}
         return self._request("POST", "/memory/pipeline/extraction", json_body=body)
 
     def run_storage_stage(
-        self,
-        extracted_data: Dict[str, Any],
-        storage_strategy: str = "standard"
+        self, extracted_data: Dict[str, Any], storage_strategy: str = "standard"
     ) -> Dict[str, Any]:
         """Run storage pipeline stage."""
-        body = {
-            "extracted_data": extracted_data,
-            "storage_strategy": storage_strategy
-        }
+        body = {"extracted_data": extracted_data, "storage_strategy": storage_strategy}
         return self._request("POST", "/memory/pipeline/storage", json_body=body)
 
     def run_linking_stage(
-        self,
-        stored_entities: List[Dict[str, Any]],
-        linking_algorithm: str = "exact"
+        self, stored_entities: List[Dict[str, Any]], linking_algorithm: str = "exact"
     ) -> Dict[str, Any]:
         """Run linking pipeline stage."""
         body = {
             "stored_entities": stored_entities,
-            "linking_algorithm": linking_algorithm
+            "linking_algorithm": linking_algorithm,
         }
         return self._request("POST", "/memory/pipeline/linking", json_body=body)
 
     def run_enrichment_stage(
         self,
         linked_entities: List[Dict[str, Any]],
-        enrichment_types: Optional[List[str]] = None
+        enrichment_types: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Run enrichment pipeline stage."""
         body = {
             "linked_entities": linked_entities,
-            "enrichment_types": enrichment_types or ["sentiment", "topics"]
+            "enrichment_types": enrichment_types or ["sentiment", "topics"],
         }
         return self._request("POST", "/memory/pipeline/enrichment", json_body=body)
 
     def run_grounding_stage(
         self,
         enriched_entities: List[Dict[str, Any]],
-        grounding_sources: Optional[List[str]] = None
+        grounding_sources: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Run grounding pipeline stage."""
         body = {
             "enriched_entities": enriched_entities,
-            "grounding_sources": grounding_sources or ["wikipedia"]
+            "grounding_sources": grounding_sources or ["wikipedia"],
         }
         return self._request("POST", "/memory/pipeline/grounding", json_body=body)
 
     def get_pipeline_state(
-        self,
-        pipeline_id: str,
-        run_id: Optional[str] = None
+        self, pipeline_id: str, run_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get pipeline state for a specific pipeline and run."""
         params = {"run_id": run_id} if run_id else None
-        return self._request("GET", f"/memory/pipeline/{pipeline_id}/state", params=params)
+        return self._request(
+            "GET", f"/memory/pipeline/{pipeline_id}/state", params=params
+        )
 
     def reset_pipeline(self, pipeline_id: str) -> Dict[str, Any]:
         """Reset a pipeline, clearing its state."""
@@ -1438,13 +1420,13 @@ class SmartMemoryClient:
         self,
         tier: str,
         billing_period: str = "monthly",
-        trial_days: Optional[int] = None
+        trial_days: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Create a Stripe Checkout session for subscription upgrade."""
         body = {
             "tier": tier,
             "billing_period": billing_period,
-            "trial_days": trial_days
+            "trial_days": trial_days,
         }
         return self._request("POST", "/subscription/checkout", json_body=body)
 
@@ -1453,14 +1435,14 @@ class SmartMemoryClient:
         tier: str,
         billing_period: str = "monthly",
         payment_method_id: Optional[str] = None,
-        use_checkout: bool = False
+        use_checkout: bool = False,
     ) -> Dict[str, Any]:
         """Upgrade subscription tier."""
         body = {
             "tier": tier,
             "billing_period": billing_period,
             "payment_method_id": payment_method_id,
-            "use_checkout": use_checkout
+            "use_checkout": use_checkout,
         }
         return self._request("POST", "/subscription/upgrade", json_body=body)
 
@@ -1470,7 +1452,9 @@ class SmartMemoryClient:
 
     def cancel_subscription(self, immediately: bool = False) -> Dict[str, Any]:
         """Cancel subscription."""
-        return self._request("POST", "/subscription/cancel", params={"immediately": immediately})
+        return self._request(
+            "POST", "/subscription/cancel", params={"immediately": immediately}
+        )
 
     # ============================================================================
     # Teams
@@ -1481,14 +1465,14 @@ class SmartMemoryClient:
         name: str,
         description: Optional[str] = None,
         data_classification: str = "internal",
-        cost_center: Optional[str] = None
+        cost_center: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new team."""
         body = {
             "name": name,
             "description": description,
             "data_classification": data_classification,
-            "cost_center": cost_center
+            "cost_center": cost_center,
         }
         return self._request("POST", "/memory/teams", json_body=body)
 
@@ -1506,14 +1490,18 @@ class SmartMemoryClient:
         name: Optional[str] = None,
         description: Optional[str] = None,
         data_classification: Optional[str] = None,
-        cost_center: Optional[str] = None
+        cost_center: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update team details."""
         body = {}
-        if name: body["name"] = name
-        if description: body["description"] = description
-        if data_classification: body["data_classification"] = data_classification
-        if cost_center: body["cost_center"] = cost_center
+        if name:
+            body["name"] = name
+        if description:
+            body["description"] = description
+        if data_classification:
+            body["data_classification"] = data_classification
+        if cost_center:
+            body["cost_center"] = cost_center
         return self._request("PUT", f"/memory/teams/{team_id}", json_body=body)
 
     def delete_team(self, team_id: str) -> Dict[str, Any]:
@@ -1525,28 +1513,26 @@ class SmartMemoryClient:
         return self._request("GET", f"/memory/teams/{team_id}/members")
 
     def add_team_member(
-        self,
-        team_id: str,
-        user_id: str,
-        role: str = "member"
+        self, team_id: str, user_id: str, role: str = "member"
     ) -> Dict[str, Any]:
         """Add a user to a team."""
         body = {"user_id": user_id, "role": role}
         return self._request("POST", f"/memory/teams/{team_id}/members", json_body=body)
 
     def update_team_member(
-        self,
-        team_id: str,
-        member_user_id: str,
-        role: str
+        self, team_id: str, member_user_id: str, role: str
     ) -> Dict[str, Any]:
         """Update a team member's role."""
         body = {"role": role}
-        return self._request("PUT", f"/memory/teams/{team_id}/members/{member_user_id}", json_body=body)
+        return self._request(
+            "PUT", f"/memory/teams/{team_id}/members/{member_user_id}", json_body=body
+        )
 
     def remove_team_member(self, team_id: str, member_user_id: str) -> Dict[str, Any]:
         """Remove a user from a team."""
-        return self._request("DELETE", f"/memory/teams/{team_id}/members/{member_user_id}")
+        return self._request(
+            "DELETE", f"/memory/teams/{team_id}/members/{member_user_id}"
+        )
 
     def get_team_permissions(self, team_id: str) -> Dict[str, Any]:
         """Get available permissions for a team."""
@@ -1561,23 +1547,25 @@ class SmartMemoryClient:
         item_id: str,
         start_time: Optional[str] = None,
         end_time: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> Dict[str, Any]:
         """Get complete version history of a memory item."""
         params = {"limit": limit}
-        if start_time: params["start_time"] = start_time
-        if end_time: params["end_time"] = end_time
-        return self._request("GET", f"/memory/temporal/{item_id}/history", params=params)
+        if start_time:
+            params["start_time"] = start_time
+        if end_time:
+            params["end_time"] = end_time
+        return self._request(
+            "GET", f"/memory/temporal/{item_id}/history", params=params
+        )
 
     def time_travel(
-        self,
-        timestamp: str,
-        query: Optional[str] = None,
-        limit: int = 100
+        self, timestamp: str, query: Optional[str] = None, limit: int = 100
     ) -> Dict[str, Any]:
         """Time-travel query - get state at specific time."""
         params = {"limit": limit}
-        if query: params["query"] = query
+        if query:
+            params["query"] = query
         return self._request("GET", f"/memory/temporal/at/{timestamp}", params=params)
 
     def get_item_at_time(self, item_id: str, timestamp: str) -> Dict[str, Any]:
@@ -1589,36 +1577,42 @@ class SmartMemoryClient:
         item_id: str,
         since: Optional[str] = None,
         until: Optional[str] = None,
-        change_type: Optional[str] = None
+        change_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get all changes to an item in time range."""
         params = {}
-        if since: params["since"] = since
-        if until: params["until"] = until
-        if change_type: params["change_type"] = change_type
-        return self._request("GET", f"/memory/temporal/{item_id}/changes", params=params)
+        if since:
+            params["since"] = since
+        if until:
+            params["until"] = until
+        if change_type:
+            params["change_type"] = change_type
+        return self._request(
+            "GET", f"/memory/temporal/{item_id}/changes", params=params
+        )
 
-    def compare_versions(
-        self,
-        item_id: str,
-        v1: int,
-        v2: int
-    ) -> Dict[str, Any]:
+    def compare_versions(self, item_id: str, v1: int, v2: int) -> Dict[str, Any]:
         """Compare two versions of an item."""
         params = {"v1": v1, "v2": v2}
-        return self._request("POST", f"/memory/temporal/{item_id}/compare", params=params)
+        return self._request(
+            "POST", f"/memory/temporal/{item_id}/compare", params=params
+        )
 
     def rollback(
         self,
         item_id: str,
         to_version: Optional[int] = None,
-        to_time: Optional[str] = None
+        to_time: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Rollback item to previous version."""
         params = {}
-        if to_version: params["to_version"] = to_version
-        if to_time: params["to_time"] = to_time
-        return self._request("POST", f"/memory/temporal/{item_id}/rollback", params=params)
+        if to_version:
+            params["to_version"] = to_version
+        if to_time:
+            params["to_time"] = to_time
+        return self._request(
+            "POST", f"/memory/temporal/{item_id}/rollback", params=params
+        )
 
     def get_audit_trail(
         self,
@@ -1626,29 +1620,29 @@ class SmartMemoryClient:
         change_type: Optional[str] = None,
         user_id: Optional[str] = None,
         start_time: Optional[str] = None,
-        end_time: Optional[str] = None
+        end_time: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get complete audit trail for an item."""
         params = {}
-        if change_type: params["change_type"] = change_type
-        if user_id: params["user_id"] = user_id
-        if start_time: params["start_time"] = start_time
-        if end_time: params["end_time"] = end_time
+        if change_type:
+            params["change_type"] = change_type
+        if user_id:
+            params["user_id"] = user_id
+        if start_time:
+            params["start_time"] = start_time
+        if end_time:
+            params["end_time"] = end_time
         return self._request("GET", f"/memory/temporal/{item_id}/audit", params=params)
 
     def search_during_range(
-        self,
-        query: str,
-        start_time: str,
-        end_time: str,
-        limit: int = 100
+        self, query: str, start_time: str, end_time: str, limit: int = 100
     ) -> Dict[str, Any]:
         """Search memories that existed during time range."""
         params = {
             "query": query,
             "start_time": start_time,
             "end_time": end_time,
-            "limit": limit
+            "limit": limit,
         }
         return self._request("GET", "/memory/temporal/search/during", params=params)
 
@@ -1657,15 +1651,16 @@ class SmartMemoryClient:
         start_date: str,
         end_date: str,
         report_type: str = "HIPAA",
-        item_ids: Optional[List[str]] = None
+        item_ids: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Generate compliance report (HIPAA, GDPR, SOC2)."""
         params = {
             "start_date": start_date,
             "end_date": end_date,
-            "report_type": report_type
+            "report_type": report_type,
         }
-        if item_ids: params["item_ids"] = item_ids
+        if item_ids:
+            params["item_ids"] = item_ids
         return self._request("GET", "/memory/temporal/compliance/report", params=params)
 
     def get_relationship_history(self, rel_id: str) -> Dict[str, Any]:
@@ -1673,17 +1668,19 @@ class SmartMemoryClient:
         return self._request("GET", f"/memory/temporal/relationships/{rel_id}/history")
 
     def get_relationships_at_time(
-        self,
-        timestamp: str,
-        limit: int = 100
+        self, timestamp: str, limit: int = 100
     ) -> Dict[str, Any]:
         """Get all relationships that existed at specific time."""
         params = {"limit": limit}
-        return self._request("GET", f"/memory/temporal/relationships/at/{timestamp}", params=params)
+        return self._request(
+            "GET", f"/memory/temporal/relationships/at/{timestamp}", params=params
+        )
 
     def get_relationship_valid_periods(self, rel_id: str) -> Dict[str, Any]:
         """Get valid time periods for a relationship."""
-        return self._request("GET", f"/memory/temporal/relationships/{rel_id}/valid-periods")
+        return self._request(
+            "GET", f"/memory/temporal/relationships/{rel_id}/valid-periods"
+        )
 
     # ============================================================================
     # Usage
@@ -1710,9 +1707,7 @@ class SmartMemoryClient:
     # ============================================================================
 
     def trigger_stripe_webhook(
-        self,
-        payload: Dict[str, Any],
-        signature: str
+        self, payload: Dict[str, Any], signature: str
     ) -> Dict[str, Any]:
         """Trigger a Stripe webhook event (mostly for testing)."""
         # Note: This sends raw body, but our _request helper assumes JSON or params.
@@ -1722,7 +1717,9 @@ class SmartMemoryClient:
         headers = {"stripe-signature": signature}
         # We'll use json_body for convenience, but real Stripe sends raw bytes.
         # This method might be limited by _request implementation if strict raw body is needed.
-        return self._request("POST", "/webhooks/stripe", json_body=payload, headers=headers)
+        return self._request(
+            "POST", "/webhooks/stripe", json_body=payload, headers=headers
+        )
 
     # ============================================================================
     # Zettelkasten
@@ -1741,19 +1738,13 @@ class SmartMemoryClient:
         return self._request("GET", f"/memory/zettel/{note_id}/connections")
 
     def get_clusters(
-        self,
-        min_size: int = 3,
-        algorithm: str = "louvain"
+        self, min_size: int = 3, algorithm: str = "louvain"
     ) -> Dict[str, Any]:
         """Detect knowledge clusters in your Zettelkasten."""
         params = {"min_size": min_size, "algorithm": algorithm}
         return self._request("GET", "/memory/zettel/clusters", params=params)
 
-    def get_hubs(
-        self,
-        min_connections: int = 5,
-        limit: int = 20
-    ) -> Dict[str, Any]:
+    def get_hubs(self, min_connections: int = 5, limit: int = 20) -> Dict[str, Any]:
         """Find hub notes (highly connected notes)."""
         params = {"min_connections": min_connections, "limit": limit}
         return self._request("GET", "/memory/zettel/hubs", params=params)
@@ -1764,30 +1755,24 @@ class SmartMemoryClient:
         return self._request("GET", "/memory/zettel/bridges", params=params)
 
     def get_discoveries(
-        self,
-        note_id: str,
-        max_distance: int = 3,
-        min_surprise: float = 0.5
+        self, note_id: str, max_distance: int = 3, min_surprise: float = 0.5
     ) -> Dict[str, Any]:
         """Find unexpected connections (serendipitous discovery)."""
         params = {"max_distance": max_distance, "min_surprise": min_surprise}
-        return self._request("GET", f"/memory/zettel/{note_id}/discoveries", params=params)
+        return self._request(
+            "GET", f"/memory/zettel/{note_id}/discoveries", params=params
+        )
 
     def get_path(
-        self,
-        note_id: str,
-        target_id: str,
-        max_paths: int = 5
+        self, note_id: str, target_id: str, max_paths: int = 5
     ) -> Dict[str, Any]:
         """Find paths between two notes."""
         params = {"max_paths": max_paths}
-        return self._request("GET", f"/memory/zettel/{note_id}/path/{target_id}", params=params)
+        return self._request(
+            "GET", f"/memory/zettel/{note_id}/path/{target_id}", params=params
+        )
 
-    def parse_wikilinks(
-        self,
-        content: str,
-        auto_create: bool = True
-    ) -> Dict[str, Any]:
+    def parse_wikilinks(self, content: str, auto_create: bool = True) -> Dict[str, Any]:
         """Parse [[wikilinks]] in content."""
         params = {"content": content, "auto_create": auto_create}
         return self._request("POST", "/memory/zettel/wikilink/parse", params=params)
@@ -1798,10 +1783,7 @@ class SmartMemoryClient:
         return self._request("GET", "/memory/zettel/wikilink/resolve", params=params)
 
     def get_subgraph(
-        self,
-        note_id: str,
-        depth: int = 2,
-        include_metadata: bool = True
+        self, note_id: str, depth: int = 2, include_metadata: bool = True
     ) -> Dict[str, Any]:
         """Get subgraph around a note (for visualization)."""
         params = {"depth": depth, "include_metadata": include_metadata}
@@ -1812,89 +1794,74 @@ class SmartMemoryClient:
         params = {"limit": limit}
         return self._request("GET", "/memory/zettel/concept-emergence", params=params)
 
-    def suggest_related_notes(
-        self,
-        note_id: str,
-        count: int = 5
-    ) -> Dict[str, Any]:
+    def suggest_related_notes(self, note_id: str, count: int = 5) -> Dict[str, Any]:
         """Suggest related notes for serendipitous discovery."""
         params = {"count": count}
-        return self._request("GET", f"/memory/zettel/{note_id}/suggestions", params=params)
+        return self._request(
+            "GET", f"/memory/zettel/{note_id}/suggestions", params=params
+        )
 
-    def random_walk_discovery(
-        self,
-        note_id: str,
-        length: int = 5
-    ) -> Dict[str, Any]:
+    def random_walk_discovery(self, note_id: str, length: int = 5) -> Dict[str, Any]:
         """Perform random walk for serendipitous discovery."""
         params = {"length": length}
-        return self._request("GET", f"/memory/zettel/{note_id}/random-walk", params=params)
+        return self._request(
+            "GET", f"/memory/zettel/{note_id}/random-walk", params=params
+        )
 
-    def find_notes_by_tag(
-        self,
-        tag: str,
-        limit: int = 100
-    ) -> Dict[str, Any]:
+    def find_notes_by_tag(self, tag: str, limit: int = 100) -> Dict[str, Any]:
         """Find notes by tag."""
         params = {"limit": limit}
         return self._request("GET", f"/memory/zettel/by-tag/{tag}", params=params)
 
     def find_notes_by_property(
-        self,
-        key: str,
-        value: str,
-        limit: int = 100
+        self, key: str, value: str, limit: int = 100
     ) -> Dict[str, Any]:
         """Find notes by property."""
         params = {"key": key, "value": value, "limit": limit}
         return self._request("GET", "/memory/zettel/by-property", params=params)
 
-    def find_notes_mentioning(
-        self,
-        entity_id: str,
-        limit: int = 100
-    ) -> Dict[str, Any]:
+    def find_notes_mentioning(self, entity_id: str, limit: int = 100) -> Dict[str, Any]:
         """Find notes mentioning an entity."""
         params = {"limit": limit}
-        return self._request("GET", f"/memory/zettel/mentioning/{entity_id}", params=params)
+        return self._request(
+            "GET", f"/memory/zettel/mentioning/{entity_id}", params=params
+        )
 
     def query_by_dynamic_relation(
-        self,
-        source_id: str,
-        relation_type: str,
-        limit: int = 100
+        self, source_id: str, relation_type: str, limit: int = 100
     ) -> Dict[str, Any]:
         """Query notes by dynamic relation type."""
         params = {"limit": limit}
-        return self._request("GET", f"/memory/zettel/by-relation/{source_id}/{relation_type}", params=params)
+        return self._request(
+            "GET",
+            f"/memory/zettel/by-relation/{source_id}/{relation_type}",
+            params=params,
+        )
 
     # =========================================================================
     # Reasoning / Assertion Challenging
     # =========================================================================
 
     def challenge(
-        self,
-        assertion: str,
-        memory_type: str = "semantic",
-        use_llm: bool = True
+        self, assertion: str, memory_type: str = "semantic", use_llm: bool = True
     ) -> Dict[str, Any]:
         """
         Challenge an assertion against existing knowledge to detect contradictions.
-        
+
         Uses a multi-method detection cascade:
         1. LLM-based (if enabled) - most accurate
         2. Graph-based - structural analysis
         3. Embedding-based - semantic similarity + polarity
         4. Heuristic - pattern matching fallback
-        
+
         Args:
             assertion: The assertion to challenge
             memory_type: Type of memory to search (default: "semantic")
             use_llm: Use LLM for deep contradiction analysis
-            
+
         Returns:
             Challenge result with conflicts, confidence, etc.
-            
+
         Example:
             ```python
             result = client.challenge("Paris is the capital of Germany")
@@ -1903,11 +1870,7 @@ class SmartMemoryClient:
                     print(f"Contradicts: {conflict['existing_fact']}")
             ```
         """
-        body = {
-            "assertion": assertion,
-            "memory_type": memory_type,
-            "use_llm": use_llm
-        }
+        body = {"assertion": assertion, "memory_type": memory_type, "use_llm": use_llm}
         return self._request("POST", "/reasoning/challenge", json_body=body)
 
     def resolve_conflict(
@@ -1917,17 +1880,17 @@ class SmartMemoryClient:
         auto_resolve: bool = True,
         strategy: Optional[str] = None,
         use_wikipedia: bool = True,
-        use_llm: bool = True
+        use_llm: bool = True,
     ) -> Dict[str, Any]:
         """
         Resolve a conflict between assertions.
-        
+
         Auto-resolution cascade (if enabled):
         1. Wikipedia lookup - verify against Wikipedia
         2. LLM reasoning - ask GPT to fact-check
         3. Grounding check - check existing provenance
         4. Recency heuristic - prefer recent info for temporal conflicts
-        
+
         Args:
             existing_item_id: ID of the existing memory item in conflict
             new_fact: The new fact that conflicts
@@ -1936,10 +1899,10 @@ class SmartMemoryClient:
                      ("keep_existing", "accept_new", "keep_both", "defer")
             use_wikipedia: Use Wikipedia for verification
             use_llm: Use LLM for reasoning
-            
+
         Returns:
             Resolution result with method, evidence, confidence
-            
+
         Example:
             ```python
             result = client.resolve_conflict(
@@ -1957,25 +1920,23 @@ class SmartMemoryClient:
             "auto_resolve": auto_resolve,
             "strategy": strategy,
             "use_wikipedia": use_wikipedia,
-            "use_llm": use_llm
+            "use_llm": use_llm,
         }
         return self._request("POST", "/reasoning/resolve", json_body=body)
 
     def list_conflicts(
-        self,
-        needs_review: bool = True,
-        limit: int = 50
+        self, needs_review: bool = True, limit: int = 50
     ) -> Dict[str, Any]:
         """
         List memory items that have unresolved conflicts.
-        
+
         Args:
             needs_review: Filter to items needing review
             limit: Maximum number of items to return
-            
+
         Returns:
             List of conflicting items with details
-            
+
         Example:
             ```python
             conflicts = client.list_conflicts()
@@ -1983,30 +1944,25 @@ class SmartMemoryClient:
                 print(f"{item['item_id']}: {item['review_reason']}")
             ```
         """
-        params = {
-            "needs_review": needs_review,
-            "limit": limit
-        }
+        params = {"needs_review": needs_review, "limit": limit}
         return self._request("GET", "/reasoning/conflicts", params=params)
 
     def get_low_confidence_items(
-        self,
-        threshold: float = 0.5,
-        limit: int = 50
+        self, threshold: float = 0.5, limit: int = 50
     ) -> Dict[str, Any]:
         """
         Get items with confidence below threshold.
-        
+
         Useful for finding facts that have been challenged multiple times
         and may need review or removal.
-        
+
         Args:
             threshold: Confidence threshold (0.0-1.0)
             limit: Maximum items to return
-            
+
         Returns:
             Items sorted by confidence (lowest first)
-            
+
         Example:
             ```python
             low_conf = client.get_low_confidence_items(threshold=0.3)
@@ -2014,25 +1970,19 @@ class SmartMemoryClient:
                 print(f"{item['item_id']}: {item['confidence']:.2f} ({item['challenge_count']} challenges)")
             ```
         """
-        params = {
-            "threshold": threshold,
-            "limit": limit
-        }
+        params = {"threshold": threshold, "limit": limit}
         return self._request("GET", "/reasoning/low-confidence", params=params)
 
-    def get_confidence_history(
-        self,
-        item_id: str
-    ) -> Dict[str, Any]:
+    def get_confidence_history(self, item_id: str) -> Dict[str, Any]:
         """
         Get the confidence decay history for a specific item.
-        
+
         Args:
             item_id: Memory item ID
-            
+
         Returns:
             Confidence history with timestamps, reasons, and conflicting facts
-            
+
         Example:
             ```python
             history = client.get_confidence_history("item_123")
@@ -2053,22 +2003,22 @@ class SmartMemoryClient:
         content: str,
         min_steps: int = 2,
         min_quality_score: float = 0.4,
-        use_llm_detection: bool = True
+        use_llm_detection: bool = True,
     ) -> Dict[str, Any]:
         """
         Extract reasoning traces from content.
-        
+
         Detects chain-of-thought reasoning patterns (Thought:/Action:/Observation:).
-        
+
         Args:
             content: Content to extract reasoning from
             min_steps: Minimum steps required for a valid trace
             min_quality_score: Minimum quality score threshold
             use_llm_detection: Use LLM for implicit reasoning detection
-            
+
         Returns:
             Extraction result with trace, has_reasoning, quality_score, step_count
-            
+
         Example:
             ```python
             result = client.extract_reasoning('''
@@ -2090,22 +2040,20 @@ class SmartMemoryClient:
         return self._request("POST", "/memory/reasoning-traces/extract", json_body=body)
 
     def store_reasoning_trace(
-        self,
-        trace: Dict[str, Any],
-        artifact_ids: Optional[List[str]] = None
+        self, trace: Dict[str, Any], artifact_ids: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Store a reasoning trace as a memory item.
-        
+
         Creates a 'reasoning' type memory with CAUSES relations to artifacts.
-        
+
         Args:
             trace: Reasoning trace dict with trace_id, steps, task_context
             artifact_ids: IDs of artifacts this reasoning produced
-            
+
         Returns:
             Storage result with trace_id, step_count, artifact_links
-            
+
         Example:
             ```python
             result = client.store_reasoning_trace(
@@ -2128,33 +2076,30 @@ class SmartMemoryClient:
         return self._request("POST", "/memory/reasoning-traces/store", json_body=body)
 
     def query_reasoning(
-        self,
-        query: str,
-        artifact_id: Optional[str] = None,
-        limit: int = 10
+        self, query: str, artifact_id: Optional[str] = None, limit: int = 10
     ) -> Dict[str, Any]:
         """
         Query reasoning traces.
-        
+
         Use cases:
         - "Why did I choose Python?" → finds reasoning traces about Python decisions
         - artifact_id → finds reasoning that led to this artifact
-        
+
         Args:
             query: Query like "why did I choose X?"
             artifact_id: Find reasoning that led to this artifact
             limit: Maximum traces to return
-            
+
         Returns:
             Query result with traces list and count
-            
+
         Example:
             ```python
             # Find reasoning about a decision
             result = client.query_reasoning("why did I use async/await?")
             for trace in result['traces']:
                 print(f"Trace {trace['trace_id']}: {trace['content'][:100]}...")
-            
+
             # Find reasoning that led to an artifact
             result = client.query_reasoning("", artifact_id="code_123")
             ```
@@ -2169,10 +2114,10 @@ class SmartMemoryClient:
     def get_reasoning_trace(self, trace_id: str) -> Dict[str, Any]:
         """
         Get a specific reasoning trace by ID.
-        
+
         Args:
             trace_id: Reasoning trace ID
-            
+
         Returns:
             Full reasoning trace with steps, task_context, artifact_ids
         """
@@ -2185,12 +2130,12 @@ class SmartMemoryClient:
     def synthesize_opinions(self) -> Dict[str, Any]:
         """
         Run opinion synthesis: detect patterns in episodic memories and form opinions.
-        
+
         Creates 'opinion' type memories with confidence scores based on recurring patterns.
-        
+
         Returns:
             Synthesis result with status, message, timestamp
-            
+
         Example:
             ```python
             result = client.synthesize_opinions()
@@ -2202,12 +2147,12 @@ class SmartMemoryClient:
     def synthesize_observations(self) -> Dict[str, Any]:
         """
         Run observation synthesis: create entity summaries from scattered facts.
-        
+
         Creates 'observation' type memories that summarize what we know about entities.
-        
+
         Returns:
             Synthesis result with status, message, timestamp
-            
+
         Example:
             ```python
             result = client.synthesize_observations()
@@ -2219,13 +2164,13 @@ class SmartMemoryClient:
     def reinforce_opinions(self) -> Dict[str, Any]:
         """
         Run opinion reinforcement: update confidence scores based on new evidence.
-        
+
         Reinforces or contradicts existing opinions based on recent episodic memories.
         Archives opinions that fall below confidence threshold.
-        
+
         Returns:
             Reinforcement result with status, message, timestamp
-            
+
         Example:
             ```python
             result = client.reinforce_opinions()
@@ -2241,18 +2186,19 @@ class SmartMemoryClient:
         params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Any:
         """Internal helper for making HTTP requests."""
         import httpx
+
         url = f"{self.base_url}{endpoint}"
         req_headers = {"X-Team-Id": self.team_id}
         if headers:
             req_headers.update(headers)
-        
+
         if self.api_key:
             req_headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         try:
             response = httpx.request(
                 method,
@@ -2261,15 +2207,17 @@ class SmartMemoryClient:
                 json=json_body,
                 data=data,
                 headers=req_headers,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             response.raise_for_status()
             if response.status_code == 204:
                 return None
             return response.json()
         except httpx.HTTPStatusError as e:
-            error_detail = e.response.text if hasattr(e, 'response') else str(e)
-            raise SmartMemoryClientError(f"Request failed: {e} - Detail: {error_detail}")
+            error_detail = e.response.text if hasattr(e, "response") else str(e)
+            raise SmartMemoryClientError(
+                f"Request failed: {e} - Detail: {error_detail}"
+            )
         except Exception as e:
             raise SmartMemoryClientError(f"Request failed: {str(e)}")
 

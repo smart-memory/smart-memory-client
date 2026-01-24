@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
+
 @dataclass
 class ConversationContextModel:
     """
@@ -8,6 +9,7 @@ class ConversationContextModel:
     Used to enable conversation-aware extraction with entity tracking,
     coreference resolution, and speaker relations.
     """
+
     conversation_id: Optional[str] = None
     user_id: Optional[str] = None
     topics: List[str] = field(default_factory=list)

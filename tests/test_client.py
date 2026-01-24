@@ -23,7 +23,7 @@ def test_client_repr():
     client = SmartMemoryClient("http://localhost:9001")
     assert "SmartMemoryClient" in repr(client)
     assert "unauthenticated" in repr(client)
-    
+
     client_with_auth = SmartMemoryClient("http://localhost:9001", api_key="token")
     assert "authenticated" in repr(client_with_auth)
 

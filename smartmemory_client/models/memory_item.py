@@ -6,14 +6,15 @@ from typing import Dict, Any, Optional, List
 class MemoryItem:
     """
     Client-side representation of a MemoryItem.
-    
+
     Designed to match the core smartmemory.models.MemoryItem interface
     for portable code between core library and client.
-    
+
     Supports both attribute access and dict-like access:
         item.content      # attribute
         item["content"]   # dict-like
     """
+
     item_id: str
     content: str
     memory_type: str = "semantic"
@@ -22,48 +23,48 @@ class MemoryItem:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     embedding: Optional[List[float]] = None
-    
+
     # Tenancy fields from core MemoryItem
     user_id: Optional[str] = None
     workspace_id: Optional[str] = None
     tenant_id: Optional[str] = None
     tags: List[str] = field(default_factory=list)
-    
+
     # Bi-temporal fields (aligned with core SDK)
     valid_start_time: Optional[str] = None  # ISO format datetime
-    valid_end_time: Optional[str] = None    # ISO format datetime
+    valid_end_time: Optional[str] = None  # ISO format datetime
     transaction_time: Optional[str] = None  # ISO format datetime
-    
+
     # Extracted data (populated by ingestion pipeline)
     entities: Optional[List[Dict[str, Any]]] = None
     relations: Optional[List[Dict[str, Any]]] = None
-    
+
     def __getitem__(self, key: str) -> Any:
         """Dict-like access for compatibility."""
         return getattr(self, key)
-    
+
     def __setitem__(self, key: str, value: Any) -> None:
         """Dict-like assignment for compatibility."""
         setattr(self, key, value)
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """Dict-like get with default."""
         return getattr(self, key, default)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MemoryItem":
         """
         Create MemoryItem from API response dict.
-        
+
         Handles various field name conventions from the service.
         """
         # Handle id vs item_id
         item_id = data.get("item_id") or data.get("id") or ""
-        
+
         return cls(
             item_id=item_id,
             content=data.get("content", ""),
@@ -85,7 +86,9 @@ class MemoryItem:
             entities=data.get("entities"),
             relations=data.get("relations"),
         )
-    
+
     def __repr__(self) -> str:
-        content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
+        content_preview = (
+            self.content[:50] + "..." if len(self.content) > 50 else self.content
+        )
         return f"MemoryItem(item_id='{self.item_id}', content='{content_preview}', type='{self.memory_type}')"

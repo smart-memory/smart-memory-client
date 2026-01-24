@@ -37,11 +37,13 @@ from smartmemory_client.models import MemoryItem, ConversationContextModel
 
 try:
     from importlib.metadata import version, PackageNotFoundError
+
     try:
         __version__ = version("smartmemory-client")
     except PackageNotFoundError:
         # Package not installed, try reading VERSION file (development mode)
         from pathlib import Path
+
         version_file = Path(__file__).parent.parent / "VERSION"
         try:
             __version__ = version_file.read_text().strip()
