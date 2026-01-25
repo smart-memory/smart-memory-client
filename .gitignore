@@ -179,3 +179,7 @@ openapi.json
 /tmp/
 *.tmp
 *.log
+
+.claude/
+!.claude/rules/*.md
+!.claude/commands/*.md
