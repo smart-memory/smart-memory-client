@@ -181,5 +181,5 @@ openapi.json
 *.log
 
 .claude/
-!.claude/rules/*.md
-!.claude/commands/*.md
+!.claude/rules/
+!.claude/commands/
