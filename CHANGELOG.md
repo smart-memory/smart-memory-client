@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Error handling tests** (`tests/test_client_errors.py`): 21 tests covering HTTP error codes (400, 401, 403, 404, 422, 500), connection errors, timeouts, success responses, and request argument forwarding
+
 ### Fixed
 - **Package structure**: Created missing `models/__init__.py` for proper model exports
 - **Module exports**: Fixed `__init__.py` to properly export `MemoryItem` and `ConversationContextModel`
