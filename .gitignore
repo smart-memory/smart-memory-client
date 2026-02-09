@@ -180,6 +180,3 @@ openapi.json
 *.tmp
 *.log
 
-.claude/
-!.claude/rules/
-!.claude/commands/

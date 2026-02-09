@@ -2179,6 +2179,172 @@ class SmartMemoryClient:
         """
         return self._request("POST", "/memory/evolution/reinforce/opinions")
 
+    # =========================================================================
+    # Decision Memory
+    # =========================================================================
+
+    def create_decision(
+        self,
+        content: str,
+        decision_type: str = "inference",
+        confidence: float = 0.8,
+        evidence_ids: Optional[List[str]] = None,
+        domain: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        source_trace_id: Optional[str] = None,
+        source_session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create a new decision with provenance tracking.
+
+        Args:
+            content: The decision statement.
+            decision_type: One of inference, preference, classification, choice, belief, policy.
+            confidence: Initial confidence score (0.0-1.0).
+            evidence_ids: Memory IDs supporting this decision.
+            domain: Domain tag for filtered retrieval.
+            tags: Additional tags.
+            source_trace_id: ReasoningTrace ID that produced this decision.
+            source_session_id: Conversation session ID.
+
+        Returns:
+            Created decision dict with decision_id, content, confidence, status.
+        """
+        body: Dict[str, Any] = {
+            "content": content,
+            "decision_type": decision_type,
+            "confidence": confidence,
+        }
+        if evidence_ids:
+            body["evidence_ids"] = evidence_ids
+        if domain:
+            body["domain"] = domain
+        if tags:
+            body["tags"] = tags
+        if source_trace_id:
+            body["source_trace_id"] = source_trace_id
+        if source_session_id:
+            body["source_session_id"] = source_session_id
+        return self._request("POST", "/memory/decisions/create", json_body=body)
+
+    def get_decision(self, decision_id: str) -> Dict[str, Any]:
+        """Retrieve a decision by ID.
+
+        Args:
+            decision_id: The decision ID to retrieve.
+
+        Returns:
+            Decision dict with all fields.
+        """
+        return self._request("GET", f"/memory/decisions/{decision_id}")
+
+    def list_decisions(
+        self,
+        domain: Optional[str] = None,
+        decision_type: Optional[str] = None,
+        min_confidence: float = 0.0,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """List active decisions with optional filters.
+
+        Args:
+            domain: Filter by domain.
+            decision_type: Filter by type (inference, preference, etc.).
+            min_confidence: Minimum confidence threshold.
+            limit: Maximum results.
+
+        Returns:
+            List of decision dicts.
+        """
+        params: Dict[str, Any] = {"min_confidence": min_confidence, "limit": limit}
+        if domain:
+            params["domain"] = domain
+        if decision_type:
+            params["decision_type"] = decision_type
+        result = self._request("GET", "/memory/decisions/", params=params)
+        return result.get("decisions", [])
+
+    def supersede_decision(
+        self,
+        decision_id: str,
+        new_content: str,
+        reason: str,
+        new_decision_type: str = "inference",
+        new_confidence: float = 0.8,
+    ) -> Dict[str, Any]:
+        """Replace a decision with a new one.
+
+        Args:
+            decision_id: ID of the decision to supersede.
+            new_content: Content of the replacement decision.
+            reason: Why the old decision is being superseded.
+            new_decision_type: Type of the new decision.
+            new_confidence: Confidence of the new decision.
+
+        Returns:
+            Dict with old_decision_id, new_decision_id, status.
+        """
+        body = {
+            "new_content": new_content,
+            "reason": reason,
+            "new_decision_type": new_decision_type,
+            "new_confidence": new_confidence,
+        }
+        return self._request("POST", f"/memory/decisions/{decision_id}/supersede", json_body=body)
+
+    def retract_decision(self, decision_id: str, reason: str) -> Dict[str, Any]:
+        """Retract a decision (mark as no longer valid).
+
+        Args:
+            decision_id: ID of the decision to retract.
+            reason: Why the decision is being retracted.
+
+        Returns:
+            Dict with decision_id and status.
+        """
+        return self._request("POST", f"/memory/decisions/{decision_id}/retract", json_body={"reason": reason})
+
+    def reinforce_decision(self, decision_id: str, evidence_id: str) -> Dict[str, Any]:
+        """Record supporting evidence for a decision.
+
+        Args:
+            decision_id: ID of the decision to reinforce.
+            evidence_id: Memory ID of the supporting evidence.
+
+        Returns:
+            Dict with decision_id, confidence, reinforcement_count.
+        """
+        return self._request("POST", f"/memory/decisions/{decision_id}/reinforce", json_body={"evidence_id": evidence_id})
+
+    def get_provenance_chain(self, decision_id: str) -> Dict[str, Any]:
+        """Get full provenance chain for a decision.
+
+        Args:
+            decision_id: The decision ID.
+
+        Returns:
+            Dict with decision, reasoning_trace, evidence, superseded.
+        """
+        return self._request("GET", f"/memory/decisions/{decision_id}/provenance")
+
+    def get_causal_chain(
+        self,
+        decision_id: str,
+        direction: str = "both",
+        max_depth: int = 3,
+    ) -> Dict[str, Any]:
+        """Trace causal chain from a decision.
+
+        Args:
+            decision_id: The decision ID.
+            direction: 'causes', 'effects', or 'both'.
+            max_depth: Maximum traversal depth (1-10).
+
+        Returns:
+            Dict with decision, causes, effects.
+        """
+        params = {"direction": direction, "max_depth": max_depth}
+        return self._request("GET", f"/memory/decisions/{decision_id}/causal-chain", params=params)
+
     def _request(
         self,
         method: str,
