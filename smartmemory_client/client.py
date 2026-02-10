@@ -224,7 +224,9 @@ class SmartMemoryClient:
 
         return response
 
-    def refresh_token(self, refresh_token_value: Optional[str] = None) -> Dict[str, Any]:
+    def refresh_token(
+        self, refresh_token_value: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Refresh the JWT access token using the refresh token.
 
@@ -239,7 +241,9 @@ class SmartMemoryClient:
         """
         token_to_use = refresh_token_value or self._refresh_token
         if not token_to_use:
-            raise SmartMemoryClientError("No refresh token available. Call login() first or provide refresh_token.")
+            raise SmartMemoryClientError(
+                "No refresh token available. Call login() first or provide refresh_token."
+            )
 
         body = {"refresh_token": token_to_use}
         result = self._request("POST", "/auth/refresh", json_body=body)
@@ -2392,7 +2396,9 @@ class SmartMemoryClient:
             "new_decision_type": new_decision_type,
             "new_confidence": new_confidence,
         }
-        return self._request("POST", f"/memory/decisions/{decision_id}/supersede", json_body=body)
+        return self._request(
+            "POST", f"/memory/decisions/{decision_id}/supersede", json_body=body
+        )
 
     def retract_decision(self, decision_id: str, reason: str) -> Dict[str, Any]:
         """Retract a decision (mark as no longer valid).
@@ -2404,7 +2410,11 @@ class SmartMemoryClient:
         Returns:
             Dict with decision_id and status.
         """
-        return self._request("POST", f"/memory/decisions/{decision_id}/retract", json_body={"reason": reason})
+        return self._request(
+            "POST",
+            f"/memory/decisions/{decision_id}/retract",
+            json_body={"reason": reason},
+        )
 
     def reinforce_decision(self, decision_id: str, evidence_id: str) -> Dict[str, Any]:
         """Record supporting evidence for a decision.
@@ -2416,7 +2426,11 @@ class SmartMemoryClient:
         Returns:
             Dict with decision_id, confidence, reinforcement_count.
         """
-        return self._request("POST", f"/memory/decisions/{decision_id}/reinforce", json_body={"evidence_id": evidence_id})
+        return self._request(
+            "POST",
+            f"/memory/decisions/{decision_id}/reinforce",
+            json_body={"evidence_id": evidence_id},
+        )
 
     def get_provenance_chain(self, decision_id: str) -> Dict[str, Any]:
         """Get full provenance chain for a decision.
@@ -2446,7 +2460,9 @@ class SmartMemoryClient:
             Dict with decision, causes, effects.
         """
         params = {"direction": direction, "max_depth": max_depth}
-        return self._request("GET", f"/memory/decisions/{decision_id}/causal-chain", params=params)
+        return self._request(
+            "GET", f"/memory/decisions/{decision_id}/causal-chain", params=params
+        )
 
     def _request(
         self,

@@ -16,25 +16,29 @@ def client():
 @pytest.fixture
 def mock_response():
     """Helper to create mock httpx responses."""
+
     def _make(json_data, status_code=200):
         resp = MagicMock()
         resp.status_code = status_code
         resp.json.return_value = json_data
         resp.raise_for_status.return_value = None
         return resp
+
     return _make
 
 
 class TestCreateDecision:
     @patch("smartmemory_client.client.httpx.request")
     def test_create_decision_basic(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision_id": "dec_123",
-            "content": "Python is best for ML",
-            "decision_type": "inference",
-            "confidence": 0.8,
-            "status": "created",
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision_id": "dec_123",
+                "content": "Python is best for ML",
+                "decision_type": "inference",
+                "confidence": 0.8,
+                "status": "created",
+            }
+        )
 
         result = client.create_decision("Python is best for ML")
         assert result["decision_id"] == "dec_123"
@@ -46,12 +50,14 @@ class TestCreateDecision:
 
     @patch("smartmemory_client.client.httpx.request")
     def test_create_decision_with_options(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision_id": "dec_456",
-            "content": "Use React",
-            "confidence": 0.9,
-            "status": "created",
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision_id": "dec_456",
+                "content": "Use React",
+                "confidence": 0.9,
+                "status": "created",
+            }
+        )
 
         result = client.create_decision(
             "Use React",
@@ -74,12 +80,14 @@ class TestCreateDecision:
 class TestGetDecision:
     @patch("smartmemory_client.client.httpx.request")
     def test_get_decision(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision_id": "dec_123",
-            "content": "Use PostgreSQL",
-            "status": "active",
-            "confidence": 0.85,
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision_id": "dec_123",
+                "content": "Use PostgreSQL",
+                "status": "active",
+                "confidence": 0.85,
+            }
+        )
 
         result = client.get_decision("dec_123")
         assert result["decision_id"] == "dec_123"
@@ -89,10 +97,12 @@ class TestGetDecision:
 class TestListDecisions:
     @patch("smartmemory_client.client.httpx.request")
     def test_list_decisions_default(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decisions": [{"decision_id": "dec_1"}, {"decision_id": "dec_2"}],
-            "count": 2,
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decisions": [{"decision_id": "dec_1"}, {"decision_id": "dec_2"}],
+                "count": 2,
+            }
+        )
 
         result = client.list_decisions()
         assert len(result) == 2
@@ -101,7 +111,9 @@ class TestListDecisions:
     def test_list_decisions_with_filters(self, mock_req, client, mock_response):
         mock_req.return_value = mock_response({"decisions": [], "count": 0})
 
-        client.list_decisions(domain="backend", decision_type="inference", min_confidence=0.5, limit=10)
+        client.list_decisions(
+            domain="backend", decision_type="inference", min_confidence=0.5, limit=10
+        )
         params = mock_req.call_args[1]["params"]
         assert params["domain"] == "backend"
         assert params["decision_type"] == "inference"
@@ -112,13 +124,17 @@ class TestListDecisions:
 class TestSupersedeDecision:
     @patch("smartmemory_client.client.httpx.request")
     def test_supersede_decision(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "old_decision_id": "dec_old",
-            "new_decision_id": "dec_new",
-            "status": "superseded",
-        })
+        mock_req.return_value = mock_response(
+            {
+                "old_decision_id": "dec_old",
+                "new_decision_id": "dec_new",
+                "status": "superseded",
+            }
+        )
 
-        result = client.supersede_decision("dec_old", "New approach", "Better data available")
+        result = client.supersede_decision(
+            "dec_old", "New approach", "Better data available"
+        )
         assert result["status"] == "superseded"
         assert result["new_decision_id"] == "dec_new"
 
@@ -130,10 +146,12 @@ class TestSupersedeDecision:
 class TestRetractDecision:
     @patch("smartmemory_client.client.httpx.request")
     def test_retract_decision(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision_id": "dec_123",
-            "status": "retracted",
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision_id": "dec_123",
+                "status": "retracted",
+            }
+        )
 
         result = client.retract_decision("dec_123", "No longer valid")
         assert result["status"] == "retracted"
@@ -144,11 +162,13 @@ class TestRetractDecision:
 class TestReinforceDecision:
     @patch("smartmemory_client.client.httpx.request")
     def test_reinforce_decision(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision_id": "dec_123",
-            "confidence": 0.88,
-            "reinforcement_count": 3,
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision_id": "dec_123",
+                "confidence": 0.88,
+                "reinforcement_count": 3,
+            }
+        )
 
         result = client.reinforce_decision("dec_123", "mem_evidence_42")
         assert result["confidence"] == 0.88
@@ -160,12 +180,14 @@ class TestReinforceDecision:
 class TestProvenanceChain:
     @patch("smartmemory_client.client.httpx.request")
     def test_get_provenance_chain(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision": {"decision_id": "dec_123"},
-            "reasoning_trace": {"trace_id": "trace_1"},
-            "evidence": [{"item_id": "mem_1"}],
-            "superseded": [],
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision": {"decision_id": "dec_123"},
+                "reasoning_trace": {"trace_id": "trace_1"},
+                "evidence": [{"item_id": "mem_1"}],
+                "superseded": [],
+            }
+        )
 
         result = client.get_provenance_chain("dec_123")
         assert result["decision"]["decision_id"] == "dec_123"
@@ -175,11 +197,13 @@ class TestProvenanceChain:
 class TestCausalChain:
     @patch("smartmemory_client.client.httpx.request")
     def test_get_causal_chain(self, mock_req, client, mock_response):
-        mock_req.return_value = mock_response({
-            "decision": {"decision_id": "dec_123"},
-            "causes": [{"decision_id": "dec_prior"}],
-            "effects": [],
-        })
+        mock_req.return_value = mock_response(
+            {
+                "decision": {"decision_id": "dec_123"},
+                "causes": [{"decision_id": "dec_prior"}],
+                "effects": [],
+            }
+        )
 
         result = client.get_causal_chain("dec_123", direction="causes", max_depth=5)
         assert len(result["causes"]) == 1
@@ -192,6 +216,7 @@ class TestErrorHandling:
     @patch("smartmemory_client.client.httpx.request")
     def test_decision_not_found(self, mock_req, client):
         import httpx
+
         resp = MagicMock()
         resp.status_code = 404
         resp.text = "Decision not found"
@@ -206,6 +231,7 @@ class TestErrorHandling:
     @patch("smartmemory_client.client.httpx.request")
     def test_decision_bad_request(self, mock_req, client):
         import httpx
+
         resp = MagicMock()
         resp.status_code = 400
         resp.text = "Validation error"
@@ -220,6 +246,7 @@ class TestErrorHandling:
     @patch("smartmemory_client.client.httpx.request")
     def test_decision_server_error(self, mock_req, client):
         import httpx
+
         resp = MagicMock()
         resp.status_code = 500
         resp.text = "Internal server error"
