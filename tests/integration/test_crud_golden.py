@@ -67,10 +67,8 @@ class TestCRUDGoldenFlow:
             assert item_id is not None
 
             # 2. SEARCH - Should find via vector similarity
-            results = client.search(unique_id, top_k=10)
-
-            # Note: Results may be empty if embedding takes time to index
-            # This is acceptable - the main test is that search doesn't error
+            search_results = client.search(unique_id, top_k=10)
+            assert isinstance(search_results, (list, dict))
 
             # 3. Cleanup
             client.delete(item_id)

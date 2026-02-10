@@ -58,8 +58,6 @@ class TestGraphOperationsFlow:
         assert isinstance(neighbors, list)
 
         # Should find target as a neighbor
-        neighbor_ids = [n.get("id") or n.get("item_id") for n in neighbors if isinstance(n, dict)]
-        # Note: The exact structure depends on API response format
         assert len(neighbors) >= 0  # At minimum, should not error
 
     def test_link_with_different_types(self):
