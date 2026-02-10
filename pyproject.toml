@@ -82,5 +82,8 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=smartmemory_client --cov-report=term-missing"
 markers = [
-    "integration: marks tests as integration tests (require running service)"
+    "integration: marks tests as integration tests (require running service)",
+    "golden: marks tests as golden flow tests (critical user journeys)",
+    "contract: marks tests as contract tests (API stability)",
+    "slow: marks tests as slow (pipeline operations, LLM calls)",
 ]
