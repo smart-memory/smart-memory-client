@@ -61,6 +61,7 @@ class TestCreateDecision:
             tags=["framework", "ui"],
             evidence_ids=["mem_1", "mem_2"],
         )
+        assert result["decision_id"] == "dec_456"
 
         body = mock_req.call_args[1]["json"]
         assert body["decision_type"] == "preference"
