@@ -38,6 +38,7 @@ class SmartMemoryClient:
 
     Features:
     - JWT authentication with automatic token handling
+    - API key authentication for automation/scripts
     - Type-safe operations with Pydantic models
     - Comprehensive error handling
     - Full API coverage
@@ -46,11 +47,21 @@ class SmartMemoryClient:
         ```python
         from smartmemory_client import SmartMemoryClient
 
-        # With API key (JWT token)
+        # With API key (for automation/scripts)
         client = SmartMemoryClient(
             base_url="http://localhost:9001",
-            api_key="your_jwt_token"
+            api_key="sk_your_api_key"
         )
+
+        # With JWT token (if you already have one)
+        client = SmartMemoryClient(
+            base_url="http://localhost:9001",
+            token="eyJ..."
+        )
+
+        # With login (interactive flow)
+        client = SmartMemoryClient(base_url="http://localhost:9001")
+        client.login(email="user@example.com", password="secret")
 
         # Add memory
         item_id = client.add("This is a test memory")
@@ -71,6 +82,7 @@ class SmartMemoryClient:
         self,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
+        token: Optional[str] = None,
         timeout: float = 30.0,
         verify_ssl: bool = True,
         team_id: Optional[str] = None,
@@ -80,9 +92,15 @@ class SmartMemoryClient:
 
         Args:
             base_url: Base URL of the SmartMemory service
-            api_key: JWT token for authentication (or set SMARTMEMORY_API_KEY env var)
+            api_key: API key (sk_...) for automation (or set SMARTMEMORY_API_KEY env var)
+            token: JWT token for authentication (or set SMARTMEMORY_TOKEN env var)
             timeout: Request timeout in seconds
             verify_ssl: Whether to verify SSL certificates
+            team_id: Team ID for multi-tenant isolation
+
+        Note:
+            Provide either api_key OR token, not both. If neither provided,
+            use login() method to authenticate.
         """
         # Determine base URL from parameter or environment
         if base_url is None:
@@ -99,31 +117,40 @@ class SmartMemoryClient:
 
         self.base_url = base_url
         self.timeout = timeout
+        self.verify_ssl = verify_ssl
 
-        # Get API key from parameter or environment
-        self.api_key = api_key or os.getenv("SMARTMEMORY_API_KEY")
+        # Store tokens separately for clarity
+        self._api_key: Optional[str] = None
+        self._token: Optional[str] = None
+        self._refresh_token: Optional[str] = None
 
-        if self.api_key:
-            logger.info(
-                f"Found API key: {self.api_key[:20]}... (length: {len(self.api_key)})"
-            )
+        # Resolve auth from parameters or environment
+        # Priority: explicit param > env var
+        resolved_api_key = api_key or os.getenv("SMARTMEMORY_API_KEY")
+        resolved_token = token or os.getenv("SMARTMEMORY_TOKEN")
+
+        # Use token if provided, otherwise api_key
+        if resolved_token:
+            self._token = resolved_token
+            logger.info(f"Using JWT token (length: {len(resolved_token)})")
+        elif resolved_api_key:
+            self._api_key = resolved_api_key
+            logger.info(f"Using API key: {resolved_api_key[:10]}...")
         else:
-            logger.warning("No API key found in environment or parameters")
+            logger.warning("No auth credentials provided. Use login() to authenticate.")
 
         # Determine team ID from parameter or environment (default dev team)
         self.team_id = (
             team_id or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
         )
-        self.verify_ssl = verify_ssl
 
-        # Build default headers
-        self.headers = {
+        # Build default headers (auth header added dynamically)
+        self._base_headers = {
             "Content-Type": "application/json",
             "X-Team-Id": self.team_id,
         }
 
-        if self.api_key:
-            self.headers["Authorization"] = f"Bearer {self.api_key}"
+        if self.is_authenticated:
             logger.info(
                 f"SmartMemoryClient initialized with authentication. "
                 f"Base URL: {self.base_url}, Team ID: {self.team_id}"
@@ -131,8 +158,115 @@ class SmartMemoryClient:
         else:
             logger.warning(
                 "SmartMemoryClient initialized WITHOUT authentication - "
-                "most endpoints will fail. Set SMARTMEMORY_API_KEY environment variable."
+                "most endpoints will fail. Call login() or provide api_key/token."
             )
+
+    @property
+    def is_authenticated(self) -> bool:
+        """Check if client has valid authentication credentials."""
+        return bool(self._token or self._api_key)
+
+    @property
+    def headers(self) -> Dict[str, str]:
+        """Get headers with current auth token."""
+        headers = self._base_headers.copy()
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+        elif self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
+
+    # Legacy property for backwards compatibility
+    @property
+    def api_key(self) -> Optional[str]:
+        """Get current auth credential (token or api_key)."""
+        return self._token or self._api_key
+
+    def login(self, email: str, password: str) -> Dict[str, Any]:
+        """
+        Authenticate with email and password to get JWT tokens.
+
+        Args:
+            email: User's email address
+            password: User's password
+
+        Returns:
+            Dict with user info and tokens
+
+        Raises:
+            SmartMemoryClientError: If login fails
+
+        Example:
+            ```python
+            client = SmartMemoryClient(base_url="http://localhost:9001")
+            result = client.login(email="user@example.com", password="secret")
+            print(result["user"]["email"])
+            ```
+        """
+        data = {"email": email, "password": password}
+        response = self._request("POST", "/auth/login", json_body=data)
+
+        # Handle both flat and nested token responses
+        if response:
+            if "access_token" in response:
+                self._token = response["access_token"]
+            elif "tokens" in response and "access_token" in response["tokens"]:
+                self._token = response["tokens"]["access_token"]
+                if "refresh_token" in response["tokens"]:
+                    self._refresh_token = response["tokens"]["refresh_token"]
+
+            # Update team_id if available in user info
+            if "user" in response and "default_team_id" in response["user"]:
+                self.team_id = response["user"]["default_team_id"]
+                self._base_headers["X-Team-Id"] = self.team_id
+
+            logger.info(f"Login successful for {email}")
+
+        return response
+
+    def refresh_token(self, refresh_token_value: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Refresh the JWT access token using the refresh token.
+
+        Args:
+            refresh_token_value: Refresh token to use. If not provided, uses internally stored token.
+
+        Returns:
+            Dict with new tokens
+
+        Raises:
+            SmartMemoryClientError: If refresh fails or no refresh token available
+        """
+        token_to_use = refresh_token_value or self._refresh_token
+        if not token_to_use:
+            raise SmartMemoryClientError("No refresh token available. Call login() first or provide refresh_token.")
+
+        body = {"refresh_token": token_to_use}
+        result = self._request("POST", "/auth/refresh", json_body=body)
+
+        if "access_token" in result:
+            self._token = result["access_token"]
+        if "refresh_token" in result:
+            self._refresh_token = result["refresh_token"]
+
+        logger.info("Token refreshed successfully")
+        return result
+
+    def logout(self) -> None:
+        """
+        Logout user and clear authentication tokens.
+
+        Calls the server logout endpoint and clears local state.
+        """
+        try:
+            self._request("POST", "/auth/logout")
+        except Exception:
+            pass  # Ignore errors on logout - still clear local state
+
+        self._token = None
+        self._refresh_token = None
+        self._api_key = None
+        logger.info("Logged out - credentials cleared")
 
     def health_check(self) -> Dict[str, Any]:
         """
@@ -1067,39 +1201,6 @@ class SmartMemoryClient:
         body = {"email": email, "password": password, "full_name": full_name}
         return self._request("POST", "/auth/signup", json_body=body)
 
-    def login(self, username: str, password: str) -> Dict[str, Any]:
-        """Login to get access token."""
-        # Service expects 'email', so we map username to email
-        data = {"email": username, "password": password}
-        response = self._request("POST", "/auth/login", json_body=data)
-
-        # Handle both flat and nested token responses
-        if response:
-            if "access_token" in response:
-                self.api_key = response["access_token"]
-            elif "tokens" in response and "access_token" in response["tokens"]:
-                self.api_key = response["tokens"]["access_token"]
-
-            # Update team_id if available in user info
-            if "user" in response and "default_team_id" in response["user"]:
-                self.team_id = response["user"]["default_team_id"]
-                self.headers["X-Team-Id"] = self.team_id
-
-        return response
-
-    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
-        """Refresh access token."""
-        body = {"refresh_token": refresh_token}
-        result = self._request("POST", "/auth/refresh", json_body=body)
-        if "access_token" in result:
-            self.api_key = result["access_token"]
-        return result
-
-    def logout(self) -> None:
-        """Logout user."""
-        self._request("POST", "/auth/logout")
-        self.api_key = None
-
     def get_me(self) -> Dict[str, Any]:
         """Get current authenticated user info."""
         return self._request("GET", "/auth/me")
@@ -1107,7 +1208,9 @@ class SmartMemoryClient:
     def logout_all(self) -> None:
         """Logout from all devices."""
         self._request("POST", "/auth/logout-all")
-        self.api_key = None
+        self._token = None
+        self._refresh_token = None
+        self._api_key = None
 
     def update_llm_keys(
         self,
