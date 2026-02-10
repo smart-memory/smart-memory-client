@@ -80,10 +80,16 @@ class TestCRUDGoldenFlow:
         client = authenticated_client
         unique_id = uuid.uuid4().hex[:8]
         content = f"Memory with metadata: {unique_id}"
-        metadata = {"source": "integration_test", "priority": "high", "test_id": unique_id}
+        metadata = {
+            "source": "integration_test",
+            "priority": "high",
+            "test_id": unique_id,
+        }
 
         # Add with metadata (skip pipeline for speed)
-        item_id = client.add(content, memory_type="semantic", metadata=metadata, use_pipeline=False)
+        item_id = client.add(
+            content, memory_type="semantic", metadata=metadata, use_pipeline=False
+        )
         assert item_id is not None
 
         # Retrieve and verify metadata
@@ -118,11 +124,15 @@ class TestCRUDGoldenFlow:
 
         # Add semantic memory (skip pipeline for speed)
         semantic_content = f"Semantic fact: {unique_id}"
-        semantic_id = client.add(semantic_content, memory_type="semantic", use_pipeline=False)
+        semantic_id = client.add(
+            semantic_content, memory_type="semantic", use_pipeline=False
+        )
 
         # Add episodic memory (skip pipeline for speed)
         episodic_content = f"Episodic event: {unique_id}"
-        episodic_id = client.add(episodic_content, memory_type="episodic", use_pipeline=False)
+        episodic_id = client.add(
+            episodic_content, memory_type="episodic", use_pipeline=False
+        )
 
         # Search with filter
         semantic_results = client.search(unique_id, memory_type="semantic")

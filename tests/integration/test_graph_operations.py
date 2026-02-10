@@ -28,8 +28,12 @@ class TestGraphOperationsFlow:
         self.source_content = f"Source node: {self.unique_id}"
         self.target_content = f"Target node: {self.unique_id}"
 
-        self.source_id = self.client.add(self.source_content, memory_type="semantic", use_pipeline=False)
-        self.target_id = self.client.add(self.target_content, memory_type="semantic", use_pipeline=False)
+        self.source_id = self.client.add(
+            self.source_content, memory_type="semantic", use_pipeline=False
+        )
+        self.target_id = self.client.add(
+            self.target_content, memory_type="semantic", use_pipeline=False
+        )
 
         yield
 
@@ -67,10 +71,14 @@ class TestGraphOperationsFlow:
         for link_type in link_types:
             # Create a new target for each link type (skip pipeline for speed)
             target_content = f"Target for {link_type}: {self.unique_id}"
-            target_id = self.client.add(target_content, memory_type="semantic", use_pipeline=False)
+            target_id = self.client.add(
+                target_content, memory_type="semantic", use_pipeline=False
+            )
 
             try:
-                linked = self.client.link(self.source_id, target_id, link_type=link_type)
+                linked = self.client.link(
+                    self.source_id, target_id, link_type=link_type
+                )
                 assert linked is True
             finally:
                 self.client.delete(target_id)
@@ -125,8 +133,12 @@ class TestZettelkastenOperations:
         self.note1_content = f"Zettel note 1: {self.unique_id}"
         self.note2_content = f"Zettel note 2: {self.unique_id}"
 
-        self.note1_id = self.client.add(self.note1_content, memory_type="zettel", use_pipeline=False)
-        self.note2_id = self.client.add(self.note2_content, memory_type="zettel", use_pipeline=False)
+        self.note1_id = self.client.add(
+            self.note1_content, memory_type="zettel", use_pipeline=False
+        )
+        self.note2_id = self.client.add(
+            self.note2_content, memory_type="zettel", use_pipeline=False
+        )
 
         yield
 
@@ -164,7 +176,11 @@ class TestZettelkastenOperations:
             assert connections is not None
         except SmartMemoryClientError as e:
             # Endpoint may not be fully implemented
-            if "500" in str(e) or "not implemented" in str(e).lower() or "no attribute" in str(e).lower():
+            if (
+                "500" in str(e)
+                or "not implemented" in str(e).lower()
+                or "no attribute" in str(e).lower()
+            ):
                 pytest.skip("get_connections endpoint not fully implemented")
             if "404" in str(e) or "not found" in str(e).lower():
                 pytest.skip("get_connections endpoint not implemented")

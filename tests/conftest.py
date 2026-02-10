@@ -14,9 +14,16 @@ import httpx
 
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line("markers", "integration: marks tests as integration tests (require running service)")
-    config.addinivalue_line("markers", "golden: marks tests as golden flow tests (critical user journeys)")
-    config.addinivalue_line("markers", "contract: marks tests as contract tests (API stability)")
+    config.addinivalue_line(
+        "markers",
+        "integration: marks tests as integration tests (require running service)",
+    )
+    config.addinivalue_line(
+        "markers", "golden: marks tests as golden flow tests (critical user journeys)"
+    )
+    config.addinivalue_line(
+        "markers", "contract: marks tests as contract tests (API stability)"
+    )
 
 
 # Default service URL for integration tests

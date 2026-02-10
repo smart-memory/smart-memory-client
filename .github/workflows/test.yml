@@ -30,8 +30,8 @@ jobs:
       - name: Lint with ruff
         run: ruff check smartmemory_client tests
       
-      - name: Format check with black
-        run: black --check smartmemory_client tests
+      - name: Format check with ruff
+        run: ruff format --check smartmemory_client tests
       
       - name: Type check with mypy
         run: mypy smartmemory_client
