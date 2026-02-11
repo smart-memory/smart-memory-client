@@ -47,7 +47,7 @@ class TestClientFullCoverage:
         client.create_agent("Agent 007", "Spy agent", roles=["read", "write"])
         mock_request.assert_called_with(
             "POST",
-            "/agents",
+            "/memory/agents",
             json_body={
                 "name": "Agent 007",
                 "description": "Spy agent",
@@ -57,13 +57,13 @@ class TestClientFullCoverage:
         )
 
         client.list_agents()
-        mock_request.assert_called_with("GET", "/agents")
+        mock_request.assert_called_with("GET", "/memory/agents")
 
         client.get_agent("agent-123")
         mock_request.assert_called_with("GET", "/memory/agents/agent-123")
 
         client.delete_agent("agent-123")
-        mock_request.assert_called_with("DELETE", "/agents/agent-123")
+        mock_request.assert_called_with("DELETE", "/memory/agents/agent-123")
 
     # ============================================================================
     # Analytics
@@ -74,13 +74,13 @@ class TestClientFullCoverage:
 
         client.detect_drift()
         mock_request.assert_called_with(
-            "GET", "/analytics/drift", params={"time_window_days": 30}
+            "GET", "/memory/analytics/drift", params={"time_window_days": 30}
         )
 
         client.detect_bias(["age"], sentiment_analysis=True)
         mock_request.assert_called_with(
             "POST",
-            "/analytics/bias",
+            "/memory/analytics/bias",
             json_body={
                 "protected_attributes": ["age"],
                 "sentiment_analysis": True,
@@ -95,15 +95,15 @@ class TestClientFullCoverage:
         client.create_api_key("New Key", ["read"])
         mock_request.assert_called_with(
             "POST",
-            "/api-keys",
+            "/memory/api-keys",
             json_body={"name": "New Key", "scopes": ["read"], "expires_in_days": None},
         )
 
         client.list_api_keys()
-        mock_request.assert_called_with("GET", "/api-keys")
+        mock_request.assert_called_with("GET", "/memory/api-keys")
 
         client.revoke_api_key("key-123")
-        mock_request.assert_called_with("DELETE", "/api-keys/key-123")
+        mock_request.assert_called_with("DELETE", "/memory/api-keys/key-123")
 
     # ============================================================================
     # Auth
@@ -170,13 +170,13 @@ class TestClientFullCoverage:
     # ============================================================================
     def test_evolve_methods(self, client, mock_request):
         client.trigger_evolution()
-        mock_request.assert_called_with("POST", "/evolution/trigger")
+        mock_request.assert_called_with("POST", "/memory/evolution/trigger")
 
         client.run_dream_phase()
-        mock_request.assert_called_with("POST", "/evolution/dream")
+        mock_request.assert_called_with("POST", "/memory/evolution/dream")
 
         client.get_evolution_status()
-        mock_request.assert_called_with("GET", "/evolution/status")
+        mock_request.assert_called_with("GET", "/memory/evolution/status")
 
     # ============================================================================
     # Governance
@@ -185,24 +185,24 @@ class TestClientFullCoverage:
         client.run_governance_analysis(query="test", top_k=50)
         mock_request.assert_called_with(
             "POST",
-            "/governance/run_analysis",
+            "/memory/governance/run_analysis",
             json_body={"query": "test", "top_k": 50, "memory_items": []},
         )
 
         client.list_violations(severity="high")
         mock_request.assert_called_with(
             "GET",
-            "/governance/violations",
+            "/memory/governance/violations",
             params={"severity": "high", "auto_fixable_only": False},
         )
 
         client.get_violation("v-123")
-        mock_request.assert_called_with("GET", "/governance/violations/v-123")
+        mock_request.assert_called_with("GET", "/memory/governance/violations/v-123")
 
         client.apply_governance_decision("v-123", action="reject")
         mock_request.assert_called_with(
             "POST",
-            "/governance/apply_decision",
+            "/memory/governance/apply_decision",
             json_body={
                 "violation_id": "v-123",
                 "action": "reject",
@@ -213,7 +213,9 @@ class TestClientFullCoverage:
 
         client.auto_fix_violations(confidence_threshold=0.9)
         mock_request.assert_called_with(
-            "POST", "/governance/auto_fix", json_body={"confidence_threshold": 0.9}
+            "POST",
+            "/memory/governance/auto_fix",
+            json_body={"confidence_threshold": 0.9},
         )
 
         client.get_governance_summary()

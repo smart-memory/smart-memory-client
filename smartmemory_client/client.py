@@ -854,27 +854,8 @@ class SmartMemoryClient:
         Returns:
             Clustering results (merged_count, clusters_found, etc.)
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/clustering/run"
-        headers = {"X-Team-Id": self.team_id}
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
         params = {"distance_threshold": distance_threshold, "dry_run": dry_run}
-
-        try:
-            http_response = httpx.post(
-                url, params=params, headers=headers, timeout=60.0
-            )
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Clustering failed: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Clustering failed: {str(e)}")
+        return self._request("POST", "/memory/clustering/run", params=params)
 
     def get_clustering_stats(self) -> Dict[str, Any]:
         """
@@ -883,23 +864,7 @@ class SmartMemoryClient:
         Returns:
             Clustering statistics
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/clustering/stats"
-        headers = {"X-Team-Id": self.team_id}
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        try:
-            http_response = httpx.get(url, headers=headers, timeout=30.0)
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Failed to get clustering stats: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Failed to get clustering stats: {str(e)}")
+        return self._request("GET", "/memory/clustering/stats")
 
     def ground(
         self, item_id: str, source_url: str, validation: Optional[Dict[str, Any]] = None
@@ -915,25 +880,8 @@ class SmartMemoryClient:
         Returns:
             Result message
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/memory/{item_id}/ground"
-        headers = {"Content-Type": "application/json", "X-Team-Id": self.team_id}
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
         body = {"item_id": item_id, "source_url": source_url, "validation": validation}
-
-        try:
-            http_response = httpx.post(url, json=body, headers=headers, timeout=30.0)
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Grounding failed: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Grounding failed: {str(e)}")
+        return self._request("POST", f"/memory/{item_id}/ground", json_body=body)
 
     def get_summarize_prompt(self, item_id: str) -> Dict[str, Any]:
         """
@@ -945,23 +893,7 @@ class SmartMemoryClient:
         Returns:
             Prompt template and metadata
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/memory/{item_id}/prompt/summarize"
-        headers = {"X-Team-Id": self.team_id}
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        try:
-            http_response = httpx.get(url, headers=headers, timeout=30.0)
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Failed to get summarize prompt: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Failed to get summarize prompt: {str(e)}")
+        return self._request("GET", f"/memory/{item_id}/prompt/summarize")
 
     def get_analyze_prompt(self, item_id: str) -> Dict[str, Any]:
         """
@@ -973,23 +905,7 @@ class SmartMemoryClient:
         Returns:
             Prompt template and metadata
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/memory/{item_id}/prompt/analyze"
-        headers = {"X-Team-Id": self.team_id}
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        try:
-            http_response = httpx.get(url, headers=headers, timeout=30.0)
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Failed to get analyze prompt: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Failed to get analyze prompt: {str(e)}")
+        return self._request("GET", f"/memory/{item_id}/prompt/analyze")
 
     def ingest_full(
         self,
@@ -1008,34 +924,12 @@ class SmartMemoryClient:
         Returns:
             Full ingestion result with entities and relations
         """
-        # Make direct HTTP request
-        import httpx
-
-        url = f"{self.base_url}/memory/ingest/full"
-        headers = {
-            "Content-Type": "application/json",
-            "X-Team-Id": self.team_id,
-        }
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        body_dict = {
+        body = {
             "content": content,
             "extractor_name": extractor_name,
             "context": context or {},
         }
-
-        try:
-            http_response = httpx.post(
-                url, json=body_dict, headers=headers, timeout=60.0
-            )
-            http_response.raise_for_status()
-            return http_response.json()
-        except httpx.HTTPStatusError as e:
-            raise SmartMemoryClientError(f"Failed to ingest content: {e}")
-        except Exception as e:
-            raise SmartMemoryClientError(f"Failed to ingest content: {str(e)}")
+        return self._request("POST", "/memory/ingest/full", json_body=body)
 
     # ============================================================================
     # Admin & Monitoring
@@ -1126,11 +1020,11 @@ class SmartMemoryClient:
             "agent_config": agent_config or {},
             "roles": roles or ["user"],
         }
-        return self._request("POST", "/agents", json_body=body)
+        return self._request("POST", "/memory/agents", json_body=body)
 
     def list_agents(self) -> List[Dict[str, Any]]:
         """List all agents in the current tenant."""
-        return self._request("GET", "/agents")
+        return self._request("GET", "/memory/agents")
 
     def get_agent(self, agent_id: str) -> Dict[str, Any]:
         """Get details of a specific agent."""
@@ -1138,7 +1032,7 @@ class SmartMemoryClient:
 
     def delete_agent(self, agent_id: str) -> None:
         """Delete (deactivate) an agent."""
-        self._request("DELETE", f"/agents/{agent_id}")
+        self._request("DELETE", f"/memory/agents/{agent_id}")
 
     # ============================================================================
     # Analytics
@@ -1151,7 +1045,9 @@ class SmartMemoryClient:
     def detect_drift(self, time_window_days: int = 30) -> Dict[str, Any]:
         """Run concept drift detection."""
         return self._request(
-            "GET", "/analytics/drift", params={"time_window_days": time_window_days}
+            "GET",
+            "/memory/analytics/drift",
+            params={"time_window_days": time_window_days},
         )
 
     def detect_bias(
@@ -1166,7 +1062,7 @@ class SmartMemoryClient:
             "sentiment_analysis": sentiment_analysis,
             "topic_analysis": topic_analysis,
         }
-        return self._request("POST", "/analytics/bias", json_body=body)
+        return self._request("POST", "/memory/analytics/bias", json_body=body)
 
     # ============================================================================
     # API Keys
@@ -1184,15 +1080,15 @@ class SmartMemoryClient:
             "scopes": scopes or ["read:memories"],
             "expires_in_days": expires_in_days,
         }
-        return self._request("POST", "/api-keys", json_body=body)
+        return self._request("POST", "/memory/api-keys", json_body=body)
 
     def list_api_keys(self) -> List[Dict[str, Any]]:
         """List all API keys."""
-        return self._request("GET", "/api-keys")
+        return self._request("GET", "/memory/api-keys")
 
     def revoke_api_key(self, key_id: str) -> None:
         """Revoke (delete) an API key."""
-        self._request("DELETE", f"/api-keys/{key_id}")
+        self._request("DELETE", f"/memory/api-keys/{key_id}")
 
     # ============================================================================
     # Auth
@@ -1251,15 +1147,15 @@ class SmartMemoryClient:
 
     def trigger_evolution(self) -> Dict[str, Any]:
         """Manually trigger memory evolution processes."""
-        return self._request("POST", "/evolution/trigger")
+        return self._request("POST", "/memory/evolution/trigger")
 
     def run_dream_phase(self) -> Dict[str, Any]:
         """Run a 'dream' phase: promote working memory to episodic/procedural."""
-        return self._request("POST", "/evolution/dream")
+        return self._request("POST", "/memory/evolution/dream")
 
     def get_evolution_status(self) -> Dict[str, Any]:
         """Get status of memory evolution processes."""
-        return self._request("GET", "/evolution/status")
+        return self._request("GET", "/memory/evolution/status")
 
     # ============================================================================
     # Governance
@@ -1273,18 +1169,18 @@ class SmartMemoryClient:
     ) -> Dict[str, Any]:
         """Run governance analysis."""
         body = {"query": query, "top_k": top_k, "memory_items": memory_items or []}
-        return self._request("POST", "/governance/run_analysis", json_body=body)
+        return self._request("POST", "/memory/governance/run_analysis", json_body=body)
 
     def list_violations(
         self, severity: Optional[str] = None, auto_fixable_only: bool = False
     ) -> Dict[str, Any]:
         """List violations available for review."""
         params = {"severity": severity, "auto_fixable_only": auto_fixable_only}
-        return self._request("GET", "/governance/violations", params=params)
+        return self._request("GET", "/memory/governance/violations", params=params)
 
     def get_violation(self, violation_id: str) -> Dict[str, Any]:
         """Get a specific violation by ID."""
-        return self._request("GET", f"/governance/violations/{violation_id}")
+        return self._request("GET", f"/memory/governance/violations/{violation_id}")
 
     def apply_governance_decision(
         self,
@@ -1300,12 +1196,14 @@ class SmartMemoryClient:
             "rationale": rationale,
             "decided_by": decided_by,
         }
-        return self._request("POST", "/governance/apply_decision", json_body=body)
+        return self._request(
+            "POST", "/memory/governance/apply_decision", json_body=body
+        )
 
     def auto_fix_violations(self, confidence_threshold: float = 0.8) -> Dict[str, Any]:
         """Run auto-fix for high-confidence violations."""
         body = {"confidence_threshold": confidence_threshold}
-        return self._request("POST", "/governance/auto_fix", json_body=body)
+        return self._request("POST", "/memory/governance/auto_fix", json_body=body)
 
     def get_governance_summary(self) -> Dict[str, Any]:
         """Get a summary of governance state."""
@@ -2018,7 +1916,7 @@ class SmartMemoryClient:
             ```
         """
         body = {"assertion": assertion, "memory_type": memory_type, "use_llm": use_llm}
-        return self._request("POST", "/reasoning/challenge", json_body=body)
+        return self._request("POST", "/memory/reasoning/challenge", json_body=body)
 
     def resolve_conflict(
         self,
@@ -2069,7 +1967,7 @@ class SmartMemoryClient:
             "use_wikipedia": use_wikipedia,
             "use_llm": use_llm,
         }
-        return self._request("POST", "/reasoning/resolve", json_body=body)
+        return self._request("POST", "/memory/reasoning/resolve", json_body=body)
 
     def list_conflicts(
         self, needs_review: bool = True, limit: int = 50
@@ -2092,7 +1990,7 @@ class SmartMemoryClient:
             ```
         """
         params = {"needs_review": needs_review, "limit": limit}
-        return self._request("GET", "/reasoning/conflicts", params=params)
+        return self._request("GET", "/memory/reasoning/conflicts", params=params)
 
     def get_low_confidence_items(
         self, threshold: float = 0.5, limit: int = 50
@@ -2118,7 +2016,7 @@ class SmartMemoryClient:
             ```
         """
         params = {"threshold": threshold, "limit": limit}
-        return self._request("GET", "/reasoning/low-confidence", params=params)
+        return self._request("GET", "/memory/reasoning/low-confidence", params=params)
 
     def get_confidence_history(self, item_id: str) -> Dict[str, Any]:
         """
@@ -2139,7 +2037,7 @@ class SmartMemoryClient:
                 print(f"    Reason: {event['reason']}")
             ```
         """
-        return self._request("GET", f"/reasoning/confidence-history/{item_id}")
+        return self._request("GET", f"/memory/reasoning/confidence-history/{item_id}")
 
     # =========================================================================
     # Reasoning Traces (System 2 Memory)
