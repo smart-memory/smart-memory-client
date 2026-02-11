@@ -1810,6 +1810,46 @@ class SmartMemoryClient:
         return self._request("GET", "/usage/tiers")
 
     # ============================================================================
+    # Token Usage (CFS-1)
+    # ============================================================================
+
+    def get_token_usage(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        group_by: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Get aggregated token usage history for the current workspace.
+
+        Args:
+            start_date: ISO date string (inclusive), e.g. "2026-02-01"
+            end_date: ISO date string (inclusive), e.g. "2026-02-11"
+            group_by: Group results by "stage", "profile", or "day"
+            limit: Max records to return (1-1000, default 100)
+
+        Returns:
+            Dict with workspace_id, record_count, total_spent, total_avoided,
+            savings_pct, records list, and optional grouping data.
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if group_by:
+            params["group_by"] = group_by
+        return self._request("GET", "/memory/token-usage", params=params)
+
+    def get_token_usage_current(self) -> Dict[str, Any]:
+        """Get real-time token usage: cache stats + last 10 pipeline runs.
+
+        Returns:
+            Dict with workspace_id, cache_stats, and recent_runs list.
+        """
+        return self._request("GET", "/memory/token-usage/current")
+
+    # ============================================================================
     # Webhooks
     # ============================================================================
 
