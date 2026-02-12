@@ -1748,6 +1748,131 @@ class SmartMemoryClient:
         return self._request("GET", "/memory/token-usage/current")
 
     # ============================================================================
+    # Procedure Matches (CFS-2)
+    # ============================================================================
+
+    def list_procedure_matches(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        procedure_id: Optional[str] = None,
+        feedback: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """List procedure match history for the current workspace.
+
+        Args:
+            start_date: ISO date string (inclusive), e.g. "2026-02-01"
+            end_date: ISO date string (inclusive), e.g. "2026-02-12"
+            procedure_id: Filter by matched procedure ID
+            feedback: Filter by feedback value: "success", "failure", or "neutral"
+            limit: Max records to return (1-1000, default 100)
+
+        Returns:
+            Dict with workspace_id, record_count, and records list.
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if procedure_id:
+            params["procedure_id"] = procedure_id
+        if feedback:
+            params["feedback"] = feedback
+        return self._request("GET", "/memory/procedure-matches", params=params)
+
+    def submit_procedure_match_feedback(
+        self,
+        match_id: str,
+        feedback: str,
+        note: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Submit feedback for a procedure match.
+
+        Args:
+            match_id: The match ID (uuid) from ingest response or match list.
+            feedback: One of "success", "failure", "neutral".
+            note: Optional explanation (max 500 chars).
+
+        Returns:
+            Dict with status, match_id, and feedback.
+        """
+        body: Dict[str, Any] = {"feedback": feedback}
+        if note:
+            body["note"] = note
+        return self._request(
+            "POST", f"/memory/procedure-matches/{match_id}/feedback", json_body=body
+        )
+
+    def get_procedure_match_stats(self) -> Dict[str, Any]:
+        """Get aggregated procedure match statistics for the current workspace.
+
+        Returns:
+            Dict with total_matches, successful, failed, neutral, no_feedback,
+            avg_confidence, and by_procedure breakdown.
+        """
+        return self._request("GET", "/memory/procedure-matches/stats")
+
+    # ============================================================================
+    # Procedure Catalog (CFS-3)
+    # ============================================================================
+
+    def list_procedures(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        sort_by: Optional[str] = None,
+        sort_order: str = "desc",
+    ) -> Dict[str, Any]:
+        """List all procedural memories with aggregated match statistics.
+
+        Args:
+            limit: Max procedures to return (1-200, default 50)
+            offset: Pagination offset (default 0)
+            sort_by: Sort field - "match_count", "success_rate", "created_at", or "name"
+            sort_order: Sort direction - "asc" or "desc" (default "desc")
+
+        Returns:
+            Dict with workspace_id, total_count, and procedures list.
+            Each procedure has id, name, description, created_at, metadata, and match_stats.
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "offset": offset,
+            "sort_order": sort_order,
+        }
+        if sort_by:
+            params["sort_by"] = sort_by
+        return self._request("GET", "/memory/procedures", params=params)
+
+    def get_procedure(
+        self,
+        procedure_id: str,
+        include_matches: bool = True,
+        match_limit: int = 20,
+    ) -> Dict[str, Any]:
+        """Get full procedure detail with recent match history.
+
+        Args:
+            procedure_id: The procedure ID to retrieve.
+            include_matches: Whether to include recent match history (default True).
+            match_limit: Max matches to include (1-100, default 20).
+
+        Returns:
+            Dict with id, name, description, content, created_at, updated_at,
+            metadata, match_stats, and optionally recent_matches list.
+
+        Raises:
+            SmartMemoryClientError: If procedure not found (404).
+        """
+        params: Dict[str, Any] = {
+            "include_matches": include_matches,
+            "match_limit": match_limit,
+        }
+        return self._request("GET", f"/memory/procedures/{procedure_id}", params=params)
+
+    # ============================================================================
     # Webhooks
     # ============================================================================
 
