@@ -2527,6 +2527,214 @@ class SmartMemoryClient:
             "GET", f"/memory/decisions/{decision_id}/causal-chain", params=params
         )
 
+    # =========================================================================
+    # Procedure Evolution (CFS-3b)
+    # =========================================================================
+
+    def get_procedure_evolution(
+        self,
+        procedure_id: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """Get evolution history for a procedure.
+
+        Returns a list of evolution events showing how the procedure was
+        discovered and refined over time.
+
+        Args:
+            procedure_id: The procedure ID to get history for
+            limit: Maximum number of events to return (default 20)
+            offset: Number of events to skip (default 0)
+
+        Returns:
+            Dict with procedure_id, current_version, total_events, and events list
+
+        Example:
+            ```python
+            history = client.get_procedure_evolution("proc_123")
+            print(f"Current version: {history['current_version']}")
+            for event in history['events']:
+                print(f"  v{event['version']}: {event['event_type']} - {event['summary']}")
+            ```
+        """
+        params = {"limit": limit, "offset": offset}
+        return self._request(
+            "GET", f"/memory/procedures/{procedure_id}/evolution", params=params
+        )
+
+    def get_procedure_evolution_event(
+        self,
+        procedure_id: str,
+        event_id: str,
+    ) -> Dict[str, Any]:
+        """Get detailed information about a specific evolution event.
+
+        Returns the full content snapshot and diff for a single evolution event.
+
+        Args:
+            procedure_id: The procedure ID
+            event_id: The event ID to retrieve
+
+        Returns:
+            Full event detail including content_snapshot and changes_from_previous
+
+        Example:
+            ```python
+            event = client.get_procedure_evolution_event("proc_123", "evt_456")
+            print(f"Content at v{event['version']}:")
+            print(event['content_snapshot']['content'])
+            if event['changes_from_previous']['has_changes']:
+                print(f"Changes: {event['changes_from_previous']['summary']}")
+            ```
+        """
+        return self._request(
+            "GET", f"/memory/procedures/{procedure_id}/evolution/{event_id}"
+        )
+
+    def get_procedure_confidence_trajectory(
+        self,
+        procedure_id: str,
+    ) -> Dict[str, Any]:
+        """Get confidence trajectory data for charting.
+
+        Returns time-series data showing how confidence has changed over the
+        procedure's lifecycle, suitable for rendering in a line chart.
+
+        Args:
+            procedure_id: The procedure ID
+
+        Returns:
+            Dict with procedure_id and data_points list containing timestamp,
+            confidence, matches, and success_rate for each point
+
+        Example:
+            ```python
+            trajectory = client.get_procedure_confidence_trajectory("proc_123")
+            for point in trajectory['data_points']:
+                print(f"{point['timestamp']}: confidence={point['confidence']:.2f}")
+            ```
+        """
+        return self._request(
+            "GET", f"/memory/procedures/{procedure_id}/confidence-trajectory"
+        )
+
+    # ============================================================================
+    # Procedure Candidates (CFS-3b Recommendation Engine)
+    # ============================================================================
+
+    def list_procedure_candidates(
+        self,
+        min_score: float = 0.6,
+        min_cluster_size: int = 3,
+        days_back: int = 30,
+        limit: int = 20,
+    ) -> Dict[str, Any]:
+        """
+        List procedure promotion candidates from working memory patterns.
+
+        Analyzes working memory items to find repeated patterns that could be
+        promoted to stored procedures for reuse.
+
+        Args:
+            min_score: Minimum recommendation score (0.0-1.0, default: 0.6)
+            min_cluster_size: Minimum items in cluster (default: 3)
+            days_back: Look back period in days (default: 30)
+            limit: Maximum candidates to return (default: 20)
+
+        Returns:
+            Dict with workspace_id, candidate_count, total_working_items, and candidates list.
+            Each candidate contains cluster_id, suggested_name, suggested_description,
+            representative_content, item_count, scores, common_skills, common_tools,
+            sample_item_ids, and date_range.
+
+        Example:
+            ```python
+            result = client.list_procedure_candidates(min_score=0.7)
+            for candidate in result['candidates']:
+                print(f"{candidate['suggested_name']}: {candidate['scores']['recommendation_score']:.2f}")
+            ```
+        """
+        params = {
+            "min_score": min_score,
+            "min_cluster_size": min_cluster_size,
+            "days_back": days_back,
+            "limit": limit,
+        }
+        return self._request("GET", "/memory/procedures/candidates", params=params)
+
+    def promote_procedure_candidate(
+        self,
+        cluster_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        procedure_type: str = "extraction",
+        preferred_profile: str = "quick_extract",
+        remove_working_items: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Promote a candidate cluster to a stored procedure.
+
+        Creates a new procedural memory item from the candidate cluster's
+        representative content and metadata.
+
+        Args:
+            cluster_id: The cluster ID from list_procedure_candidates
+            name: Optional name for the procedure (uses suggested_name if omitted)
+            description: Optional description for the procedure
+            procedure_type: Type of procedure (default: "extraction")
+            preferred_profile: Preferred pipeline profile (default: "quick_extract")
+            remove_working_items: Remove working items after promotion (default: False)
+
+        Returns:
+            Dict with status, procedure_id, name, items_promoted, and items_removed
+
+        Example:
+            ```python
+            result = client.promote_procedure_candidate(
+                cluster_id="abc-123",
+                name="API Error Handler",
+                description="Handles 4xx errors from external APIs"
+            )
+            print(f"Created procedure: {result['procedure_id']}")
+            ```
+        """
+        body = {
+            "name": name,
+            "description": description,
+            "procedure_type": procedure_type,
+            "preferred_profile": preferred_profile,
+            "remove_working_items": remove_working_items,
+        }
+        return self._request(
+            "POST",
+            f"/memory/procedures/candidates/{cluster_id}/promote",
+            json_body=body,
+        )
+
+    def dismiss_procedure_candidate(self, cluster_id: str) -> Dict[str, Any]:
+        """
+        Dismiss a candidate cluster from future recommendations.
+
+        The candidate will be excluded from future recommendation lists
+        for this workspace.
+
+        Args:
+            cluster_id: The cluster ID to dismiss
+
+        Returns:
+            Dict with status, cluster_id, and message
+
+        Example:
+            ```python
+            result = client.dismiss_procedure_candidate("abc-123")
+            print(result['message'])  # "Candidate dismissed from future recommendations"
+            ```
+        """
+        return self._request(
+            "DELETE", f"/memory/procedures/candidates/{cluster_id}/dismiss"
+        )
+
     def _request(
         self,
         method: str,
