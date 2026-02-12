@@ -156,6 +156,14 @@ class TestListProcedureCandidates:
             client.list_procedure_candidates()
 
     @patch("smartmemory_client.client.httpx.request")
+    def test_400_bad_request(self, mock_request, client):
+        """Test 400 error for invalid parameters."""
+        mock_request.return_value = _error_response(400, "Invalid min_score value")
+
+        with pytest.raises(SmartMemoryClientError, match="Request failed"):
+            client.list_procedure_candidates(min_score=-1.0)
+
+    @patch("smartmemory_client.client.httpx.request")
     def test_500_server_error(self, mock_request, client):
         mock_request.return_value = _error_response(500, "Internal server error")
 
