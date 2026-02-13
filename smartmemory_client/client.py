@@ -2735,6 +2735,142 @@ class SmartMemoryClient:
             "DELETE", f"/memory/procedures/candidates/{cluster_id}/dismiss"
         )
 
+    # ============================================================================
+    # Procedure Schema Drift Detection (CFS-4)
+    # ============================================================================
+
+    def list_drift_events(
+        self,
+        procedure_id: Optional[str] = None,
+        resolved: Optional[bool] = None,
+        breaking_only: Optional[bool] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        List schema drift events for the current workspace.
+
+        Args:
+            procedure_id: Filter by procedure ID.
+            resolved: Filter by resolution status.
+            breaking_only: If True, only return events with breaking changes.
+            start_date: ISO 8601 date string for range start.
+            end_date: ISO 8601 date string for range end.
+            limit: Maximum number of events to return (1-1000, default 100).
+
+        Returns:
+            Dict with workspace_id, record_count, and records list of DriftEventSummary dicts.
+
+        Example:
+            ```python
+            events = client.list_drift_events(resolved=False, breaking_only=True)
+            for event in events["records"]:
+                print(f"{event['procedure_id']}: {event['diff_summary']}")
+            ```
+        """
+        params: Dict[str, Any] = {"limit": limit}
+        if procedure_id is not None:
+            params["procedure_id"] = procedure_id
+        if resolved is not None:
+            params["resolved"] = resolved
+        if breaking_only is not None:
+            params["breaking_only"] = breaking_only
+        if start_date is not None:
+            params["start_date"] = start_date
+        if end_date is not None:
+            params["end_date"] = end_date
+        return self._request("GET", "/memory/procedure-drift", params=params)
+
+    def get_drift_event(self, event_id: str) -> Dict[str, Any]:
+        """
+        Get a single drift event with full change details.
+
+        Args:
+            event_id: The drift event ID.
+
+        Returns:
+            DriftEventDetail dict with changes list, resolution info, and full metadata.
+
+        Raises:
+            SmartMemoryClientError: If event not found (404).
+
+        Example:
+            ```python
+            event = client.get_drift_event("evt-abc-123")
+            for change in event["changes"]:
+                print(f"  {change['path']}: {change['change_type']} (breaking={change['breaking']})")
+            ```
+        """
+        return self._request("GET", f"/memory/procedure-drift/{event_id}")
+
+    def resolve_drift_event(
+        self, event_id: str, note: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Mark a drift event as resolved.
+
+        Args:
+            event_id: The drift event ID to resolve.
+            note: Optional resolution note (max 500 chars).
+
+        Returns:
+            Dict with status, event_id, and resolved=True.
+
+        Raises:
+            SmartMemoryClientError: If event not found (404).
+
+        Example:
+            ```python
+            result = client.resolve_drift_event("evt-abc-123", note="Schema updated intentionally")
+            ```
+        """
+        body: Dict[str, Any] = {}
+        if note is not None:
+            body["note"] = note
+        return self._request(
+            "POST", f"/memory/procedure-drift/{event_id}/resolve", json_body=body
+        )
+
+    def sweep_drift(self) -> Dict[str, Any]:
+        """
+        Trigger a drift sweep across all procedures in the workspace.
+
+        Checks all procedures for schema drift against their stored snapshots.
+
+        Returns:
+            SweepResult dict with workspace_id, procedures_checked, drift_detected,
+            and events_created counts.
+
+        Example:
+            ```python
+            result = client.sweep_drift()
+            print(f"Checked {result['procedures_checked']} procedures, "
+                  f"found {result['drift_detected']} with drift")
+            ```
+        """
+        return self._request("POST", "/memory/procedure-drift/sweep", json_body={})
+
+    def list_schema_snapshots(self, procedure_id: str) -> Dict[str, Any]:
+        """
+        List schema snapshots for a procedure.
+
+        Args:
+            procedure_id: The procedure ID to get snapshots for.
+
+        Returns:
+            Dict with workspace_id, procedure_id, record_count, and snapshots list
+            of SchemaSnapshotSummary dicts.
+
+        Example:
+            ```python
+            result = client.list_schema_snapshots("proc-abc-123")
+            for snap in result["snapshots"]:
+                print(f"{snap['captured_at']}: {snap['tool_count']} tools, hash={snap['schema_hash']}")
+            ```
+        """
+        return self._request("GET", f"/memory/procedure-schemas/{procedure_id}")
+
     def _request(
         self,
         method: str,

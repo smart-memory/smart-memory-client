@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Procedure Schema Drift Detection (CFS-4)**: 5 new methods for schema drift management
+  - `list_drift_events()` — list drift events with filtering (procedure_id, resolved, breaking_only, date range)
+  - `get_drift_event(event_id)` — get drift event detail with full changes list
+  - `resolve_drift_event(event_id, note)` — mark a drift event as resolved
+  - `sweep_drift()` — trigger workspace-wide drift sweep
+  - `list_schema_snapshots(procedure_id)` — list schema snapshot history
+- **Drift detection tests** (`tests/test_procedure_drift.py`): 16 tests covering all 5 endpoints with happy path, error codes, parameter filtering
 - **Error handling tests** (`tests/test_client_errors.py`): 21 tests covering HTTP error codes (400, 401, 403, 404, 422, 500), connection errors, timeouts, success responses, and request argument forwarding
 
 ### Fixed
