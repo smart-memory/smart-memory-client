@@ -83,5 +83,8 @@ markers = [
     "integration: marks tests as integration tests (require running service)",
     "golden: marks tests as golden flow tests (critical user journeys)",
     "contract: marks tests as contract tests (API stability)",
+    "harness: table-driven error path tests",
+    "invariant: pure-logic unit tests (justified only)",
+    "e2e: end-to-end tests",
     "slow: marks tests as slow (pipeline operations, LLM calls)",
 ]
