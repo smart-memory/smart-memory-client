@@ -72,7 +72,7 @@ class TestGetProcedureEvolution:
         }
         mock_request.return_value = mock_response
 
-        result = client.get_procedure_evolution("proc_123", limit=5, offset=5)
+        client.get_procedure_evolution("proc_123", limit=5, offset=5)
 
         # Verify pagination params
         call_args = mock_request.call_args
