@@ -110,7 +110,7 @@ class SmartMemoryClient:
             if host in ("0.0.0.0", "::"):
                 host = "localhost"
             try:
-                port = int(os.getenv("SMARTMEMORY_SERVICES_PORT", "9001"))
+                port = int(os.getenv("SMARTMEMORY_SERVER_PORT", "9001"))
             except Exception:
                 port = 9001
             base_url = f"http://{host}:{port}"
