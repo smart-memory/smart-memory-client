@@ -185,7 +185,7 @@ class TestClientFullCoverage:
         client.run_governance_analysis(query="test", top_k=50)
         mock_request.assert_called_with(
             "POST",
-            "/memory/governance/run_analysis",
+            "/memory/governance/run-analysis",
             json_body={"query": "test", "top_k": 50, "memory_items": []},
         )
 
@@ -202,7 +202,7 @@ class TestClientFullCoverage:
         client.apply_governance_decision("v-123", action="reject")
         mock_request.assert_called_with(
             "POST",
-            "/memory/governance/apply_decision",
+            "/memory/governance/apply-decision",
             json_body={
                 "violation_id": "v-123",
                 "action": "reject",
@@ -214,7 +214,7 @@ class TestClientFullCoverage:
         client.auto_fix_violations(confidence_threshold=0.9)
         mock_request.assert_called_with(
             "POST",
-            "/memory/governance/auto_fix",
+            "/memory/governance/auto-fix",
             json_body={"confidence_threshold": 0.9},
         )
 

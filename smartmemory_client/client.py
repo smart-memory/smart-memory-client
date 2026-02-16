@@ -1169,7 +1169,7 @@ class SmartMemoryClient:
     ) -> Dict[str, Any]:
         """Run governance analysis."""
         body = {"query": query, "top_k": top_k, "memory_items": memory_items or []}
-        return self._request("POST", "/memory/governance/run_analysis", json_body=body)
+        return self._request("POST", "/memory/governance/run-analysis", json_body=body)
 
     def list_violations(
         self, severity: Optional[str] = None, auto_fixable_only: bool = False
@@ -1197,13 +1197,13 @@ class SmartMemoryClient:
             "decided_by": decided_by,
         }
         return self._request(
-            "POST", "/memory/governance/apply_decision", json_body=body
+            "POST", "/memory/governance/apply-decision", json_body=body
         )
 
     def auto_fix_violations(self, confidence_threshold: float = 0.8) -> Dict[str, Any]:
         """Run auto-fix for high-confidence violations."""
         body = {"confidence_threshold": confidence_threshold}
-        return self._request("POST", "/memory/governance/auto_fix", json_body=body)
+        return self._request("POST", "/memory/governance/auto-fix", json_body=body)
 
     def get_governance_summary(self) -> Dict[str, Any]:
         """Get a summary of governance state."""
@@ -1780,7 +1780,7 @@ class SmartMemoryClient:
             params["procedure_id"] = procedure_id
         if feedback:
             params["feedback"] = feedback
-        return self._request("GET", "/memory/procedure-matches", params=params)
+        return self._request("GET", "/memory/procedures/matches", params=params)
 
     def submit_procedure_match_feedback(
         self,
@@ -1802,7 +1802,7 @@ class SmartMemoryClient:
         if note:
             body["note"] = note
         return self._request(
-            "POST", f"/memory/procedure-matches/{match_id}/feedback", json_body=body
+            "POST", f"/memory/procedures/matches/{match_id}/feedback", json_body=body
         )
 
     def get_procedure_match_stats(self) -> Dict[str, Any]:
@@ -1812,7 +1812,7 @@ class SmartMemoryClient:
             Dict with total_matches, successful, failed, neutral, no_feedback,
             avg_confidence, and by_procedure breakdown.
         """
-        return self._request("GET", "/memory/procedure-matches/stats")
+        return self._request("GET", "/memory/procedures/matches/stats")
 
     # ============================================================================
     # Procedure Catalog (CFS-3)
@@ -2430,7 +2430,7 @@ class SmartMemoryClient:
             params["domain"] = domain
         if decision_type:
             params["decision_type"] = decision_type
-        result = self._request("GET", "/memory/decisions/", params=params)
+        result = self._request("GET", "/memory/decisions", params=params)
         return result.get("decisions", [])
 
     def supersede_decision(
@@ -2780,7 +2780,7 @@ class SmartMemoryClient:
             params["start_date"] = start_date
         if end_date is not None:
             params["end_date"] = end_date
-        return self._request("GET", "/memory/procedure-drift", params=params)
+        return self._request("GET", "/memory/procedures/drift", params=params)
 
     def get_drift_event(self, event_id: str) -> Dict[str, Any]:
         """
@@ -2802,7 +2802,7 @@ class SmartMemoryClient:
                 print(f"  {change['path']}: {change['change_type']} (breaking={change['breaking']})")
             ```
         """
-        return self._request("GET", f"/memory/procedure-drift/{event_id}")
+        return self._request("GET", f"/memory/procedures/drift/{event_id}")
 
     def resolve_drift_event(
         self, event_id: str, note: Optional[str] = None
@@ -2829,7 +2829,7 @@ class SmartMemoryClient:
         if note is not None:
             body["note"] = note
         return self._request(
-            "POST", f"/memory/procedure-drift/{event_id}/resolve", json_body=body
+            "POST", f"/memory/procedures/drift/{event_id}/resolve", json_body=body
         )
 
     def sweep_drift(self) -> Dict[str, Any]:
@@ -2849,7 +2849,7 @@ class SmartMemoryClient:
                   f"found {result['drift_detected']} with drift")
             ```
         """
-        return self._request("POST", "/memory/procedure-drift/sweep", json_body={})
+        return self._request("POST", "/memory/procedures/drift/sweep", json_body={})
 
     def list_schema_snapshots(self, procedure_id: str) -> Dict[str, Any]:
         """
@@ -2869,7 +2869,7 @@ class SmartMemoryClient:
                 print(f"{snap['captured_at']}: {snap['tool_count']} tools, hash={snap['schema_hash']}")
             ```
         """
-        return self._request("GET", f"/memory/procedure-schemas/{procedure_id}")
+        return self._request("GET", f"/memory/procedures/schemas/{procedure_id}")
 
     def _request(
         self,
