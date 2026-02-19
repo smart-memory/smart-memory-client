@@ -182,48 +182,6 @@ class SmartMemoryClient:
         """Get current auth credential (token or api_key)."""
         return self._token or self._api_key
 
-    def login(self, email: str, password: str) -> Dict[str, Any]:
-        """
-        Authenticate with email and password to get JWT tokens.
-
-        Args:
-            email: User's email address
-            password: User's password
-
-        Returns:
-            Dict with user info and tokens
-
-        Raises:
-            SmartMemoryClientError: If login fails
-
-        Example:
-            ```python
-            client = SmartMemoryClient(base_url="http://localhost:9001")
-            result = client.login(email="user@example.com", password="secret")
-            print(result["user"]["email"])
-            ```
-        """
-        data = {"email": email, "password": password}
-        response = self._request("POST", "/auth/login", json_body=data)
-
-        # Handle both flat and nested token responses
-        if response:
-            if "access_token" in response:
-                self._token = response["access_token"]
-            elif "tokens" in response and "access_token" in response["tokens"]:
-                self._token = response["tokens"]["access_token"]
-                if "refresh_token" in response["tokens"]:
-                    self._refresh_token = response["tokens"]["refresh_token"]
-
-            # Update team_id if available in user info
-            if "user" in response and "default_team_id" in response["user"]:
-                self.team_id = response["user"]["default_team_id"]
-                self._base_headers["X-Team-Id"] = self.team_id
-
-            logger.info(f"Login successful for {email}")
-
-        return response
-
     def refresh_token(
         self, refresh_token_value: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -1094,13 +1052,6 @@ class SmartMemoryClient:
     # Auth
     # ============================================================================
 
-    def signup(
-        self, email: str, password: str, full_name: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Register a new user."""
-        body = {"email": email, "password": password, "full_name": full_name}
-        return self._request("POST", "/auth/signup", json_body=body)
-
     def get_me(self) -> Dict[str, Any]:
         """Get current authenticated user info."""
         return self._request("GET", "/auth/me")
@@ -1129,17 +1080,6 @@ class SmartMemoryClient:
     def get_llm_keys(self) -> Dict[str, Any]:
         """Get user's LLM provider API keys (masked)."""
         return self._request("GET", "/auth/llm-keys")
-
-    def request_password_reset(self, email: str) -> Dict[str, Any]:
-        """Request a password reset email."""
-        return self._request(
-            "POST", "/auth/password-reset/request", json_body={"email": email}
-        )
-
-    def confirm_password_reset(self, token: str, new_password: str) -> Dict[str, Any]:
-        """Reset password using a valid reset token."""
-        body = {"token": token, "new_password": new_password}
-        return self._request("POST", "/auth/password-reset/confirm", json_body=body)
 
     # ============================================================================
     # Evolve

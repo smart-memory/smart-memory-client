@@ -38,6 +38,20 @@ def pytest_configure(config):
 SERVICE_URL = os.getenv("SMARTMEMORY_SERVICE_URL", "http://localhost:9001")
 
 
+def _cleanup_test_users_best_effort():
+    """Best-effort cleanup for prefixed test users.
+
+    Uses shared service_common helper when available (monorepo runs),
+    otherwise silently skips to avoid blocking standalone client tests.
+    """
+    try:
+        from service_common.testing import cleanup_test_users
+
+        cleanup_test_users(["test-", "test_", "sso_smoke_"])
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="session")
 def service_url():
     """Base URL for the SmartMemory service."""
@@ -54,6 +68,13 @@ def service_available(service_url):
     except Exception:
         pass
     pytest.skip(f"SmartMemory service not available at {service_url}")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_users_session():
+    _cleanup_test_users_best_effort()
+    yield
+    _cleanup_test_users_best_effort()
 
 
 @pytest.fixture(scope="class")
