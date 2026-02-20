@@ -87,26 +87,25 @@ client = SmartMemoryClient(
 
 ### Getting a JWT Token
 
+SmartMemory uses Clerk for authentication (PLAT-SSO-IDP-1). `/auth/signup` and
+`/auth/login` have been removed. Tokens are obtained via the Clerk-hosted login
+flow or, for programmatic/service access, via the Clerk session exchange endpoint:
+
 ```bash
-# Sign up
-curl -X POST "http://localhost:9001/auth/signup" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "your_password",
-    "full_name": "Your Name"
-  }'
+# Exchange a Clerk session token for a SmartMemory JWT + cookies
+curl -X POST "http://localhost:9001/auth/clerk/session" \
+  -H "Authorization: Bearer <clerk_session_token>"
+# Response sets sm_access_token cookie and returns {"access_token": "eyJ..."}
 
-# Login to get JWT token
-curl -X POST "http://localhost:9001/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "your_password"
-  }'
-
-# Response: {"access_token": "eyJ...", "token_type": "bearer"}
+# Verify / inspect the token
+curl "http://localhost:9001/auth/me" \
+  -H "Authorization: Bearer <sm_access_token>"
+# Response: {"id": "...", "email": "...", "default_team_id": "..."}
 ```
+
+For local E2E / integration tests, set `SM_E2E_TOKEN` and `SM_E2E_TEAM_ID` env vars
+(captured from a real Clerk login or the `sm_access_token` cookie) and the test
+fixtures will inject them automatically.
 
 ## API Reference
 
