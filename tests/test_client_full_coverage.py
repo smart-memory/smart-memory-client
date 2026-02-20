@@ -109,24 +109,7 @@ class TestClientFullCoverage:
     # Auth
     # ============================================================================
     def test_auth_methods(self, client, mock_request):
-        client.signup("test@example.com", "password", "Test User")
-        mock_request.assert_called_with(
-            "POST",
-            "/auth/signup",
-            json_body={
-                "email": "test@example.com",
-                "password": "password",
-                "full_name": "Test User",
-            },
-        )
-
-        client.login("test@example.com", "password")
-        mock_request.assert_called_with(
-            "POST",
-            "/auth/login",
-            json_body={"email": "test@example.com", "password": "password"},
-        )
-
+        # signup/login/password-reset removed — those routes are deleted; Clerk handles auth.
         client.refresh_token("refresh-token")
         mock_request.assert_called_with(
             "POST", "/auth/refresh", json_body={"refresh_token": "refresh-token"}
@@ -150,20 +133,6 @@ class TestClientFullCoverage:
 
         client.get_llm_keys()
         mock_request.assert_called_with("GET", "/auth/llm-keys")
-
-        client.request_password_reset("test@example.com")
-        mock_request.assert_called_with(
-            "POST",
-            "/auth/password-reset/request",
-            json_body={"email": "test@example.com"},
-        )
-
-        client.confirm_password_reset("token", "new-pass")
-        mock_request.assert_called_with(
-            "POST",
-            "/auth/password-reset/confirm",
-            json_body={"token": "token", "new_password": "new-pass"},
-        )
 
     # ============================================================================
     # Evolve

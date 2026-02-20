@@ -79,42 +79,51 @@ def cleanup_test_users_session():
 
 @pytest.fixture(scope="class")
 def test_user(service_url, service_available):
-    """Create a unique test user via signup.
+    """Create a unique test user via direct DB provisioning.
+
+    /auth/signup HTTP route no longer exists (removed in PLAT-SSO-IDP-1).
+    Uses AuthService.signup() directly so no HTTP round-trip is needed for
+    provisioning. Validates the provisioned session via /auth/me.
 
     Returns dict with:
-        - email: test user email
-        - password: test user password
+        - email, password: credentials
         - access_token: JWT token for authentication
-        - workspace_id: workspace ID for the user
+        - workspace_id, user_id, team_id: IDs
     """
+    try:
+        from service_common.services.auth_service import AuthService
+        from service_common.repositories.factories import create_auth_repository
+        from service_common.models.auth import SignupRequest
+    except ImportError:
+        pytest.skip("service_common not available — integration tests require monorepo context")
+
     unique_id = uuid.uuid4().hex[:8]
     email = f"test_{unique_id}@example.com"
     password = "TestPassword123!"
 
-    # Sign up the user
-    signup_data = {
-        "email": email,
-        "password": password,
-        "name": f"Test User {unique_id}",
-    }
+    repo = create_auth_repository()
+    auth_service = AuthService(repo)
+    user_response, tokens = auth_service.signup(
+        SignupRequest(email=email, password=password, full_name=f"Test User {unique_id}")
+    )
 
-    resp = httpx.post(f"{service_url}/auth/signup", json=signup_data, timeout=10.0)
-    if resp.status_code not in (200, 201):
-        pytest.fail(f"Failed to sign up test user: {resp.status_code} {resp.text}")
+    # Validate the provisioned session via /auth/me (still present)
+    resp = httpx.get(
+        f"{service_url}/auth/me",
+        headers={"Authorization": f"Bearer {tokens.access_token}"},
+        timeout=10.0,
+    )
+    if resp.status_code != 200:
+        pytest.fail(f"/auth/me failed ({resp.status_code}): {resp.text}")
 
-    data = resp.json()
-
-    # Extract tokens - may be nested under "tokens"
-    tokens = data.get("tokens", data)
-    user = data.get("user", data)
-
+    me = resp.json()
     return {
         "email": email,
         "password": password,
-        "access_token": tokens.get("access_token"),
-        "workspace_id": user.get("tenant_id") or data.get("workspace_id"),
-        "user_id": user.get("id") or data.get("user_id"),
-        "team_id": user.get("default_team_id"),
+        "access_token": tokens.access_token,
+        "workspace_id": me.get("tenant_id"),
+        "user_id": user_response.id,
+        "team_id": me.get("default_team_id"),
     }
 
 
