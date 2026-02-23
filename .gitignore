@@ -180,3 +180,7 @@ openapi.json
 *.tmp
 *.log
 
+
+# Local secrets
+.secrets
+.act.secrets
