@@ -11,7 +11,7 @@ class ConversationContextModel:
     """
 
     conversation_id: Optional[str] = None
-    user_id: Optional[str] = None
+    participant_id: Optional[str] = None  # Who is participating (see contracts/conversation.json)
     topics: List[str] = field(default_factory=list)
     entities: List[Dict[str, Any]] = field(default_factory=list)
     turn_history: List[Dict[str, Any]] = field(default_factory=list)

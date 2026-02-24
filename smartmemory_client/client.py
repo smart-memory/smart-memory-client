@@ -314,11 +314,12 @@ class SmartMemoryClient:
         }
 
         if conversation_context:
+            import dataclasses
             if isinstance(conversation_context, ConversationContextModel):
-                # Convert dataclass to dict
-                from dataclasses import asdict
-
-                body_dict["conversation_context"] = asdict(conversation_context)
+                body_dict["conversation_context"] = dataclasses.asdict(conversation_context)
+            elif dataclasses.is_dataclass(conversation_context) and not isinstance(conversation_context, type):
+                # Handle core ConversationContext or any other dataclass passed directly
+                body_dict["conversation_context"] = dataclasses.asdict(conversation_context)
             else:
                 body_dict["conversation_context"] = conversation_context
 
