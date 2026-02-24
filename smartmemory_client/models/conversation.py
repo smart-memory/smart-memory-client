@@ -1,3 +1,4 @@
+import dataclasses
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
@@ -18,3 +19,9 @@ class ConversationContextModel:
     sentiment: Optional[str] = None
     active_threads: List[str] = field(default_factory=list)
     extra: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ConversationContextModel":
+        """Build from a plain dict, ignoring unknown keys."""
+        known = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
