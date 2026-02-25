@@ -2854,6 +2854,37 @@ class SmartMemoryClient:
         except Exception as e:
             raise SmartMemoryClientError(f"Request failed: {str(e)}")
 
+    def feedback(
+        self,
+        item_ids: List[str],
+        outcome: str,
+        query: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Submit explicit feedback on recalled memory items.
+
+        Adjusts ``retention_score`` immediately and, for ``helpful`` feedback with
+        multiple items, strengthens ``CO_RETRIEVED`` edges between them — feeding
+        directly into the Hebbian co-retrieval evolver.
+
+        Args:
+            item_ids: IDs of items returned by a prior ``search()`` call.
+            outcome: ``"helpful"``, ``"misleading"``, or ``"neutral"``.
+            query: Optional original search query (for context/logging).
+
+        Returns:
+            Dict with keys: ``updated`` (int), ``edges_strengthened`` (int), ``outcome`` (str).
+
+        Example:
+            ```python
+            results = client.search("what did we decide about auth?")
+            client.feedback([r.item_id for r in results], outcome="helpful")
+            ```
+        """
+        body: Dict[str, Any] = {"item_ids": item_ids, "outcome": outcome}
+        if query is not None:
+            body["query"] = query
+        return self._request("POST", "/memory/feedback", json_body=body)
+
     def __repr__(self) -> str:
         auth_status = "authenticated" if self.api_key else "unauthenticated"
         return f"SmartMemoryClient(base_url='{self.base_url}', {auth_status})"
