@@ -85,7 +85,8 @@ class SmartMemoryClient:
         token: Optional[str] = None,
         timeout: float = 30.0,
         verify_ssl: bool = True,
-        team_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        team_id: Optional[str] = None,  # deprecated alias for workspace_id, removed in v0.5.0
     ):
         """
         Initialize SmartMemory client wrapper.
@@ -96,7 +97,8 @@ class SmartMemoryClient:
             token: JWT token for authentication (or set SMARTMEMORY_TOKEN env var)
             timeout: Request timeout in seconds
             verify_ssl: Whether to verify SSL certificates
-            team_id: Team ID for multi-tenant isolation
+            workspace_id: Workspace ID for multi-tenant isolation (preferred)
+            team_id: Deprecated alias for workspace_id. Removed in v0.5.0.
 
         Note:
             Provide either api_key OR token, not both. If neither provided,
@@ -139,15 +141,24 @@ class SmartMemoryClient:
         else:
             logger.warning("No auth credentials provided. Use login() to authenticate.")
 
-        # Determine team ID from parameter or environment (default dev team)
+        # Resolve workspace_id; team_id is a deprecated alias (removed in v0.5.0).
+        # Warn only when team_id is actually used as the fallback (workspace_id not provided).
         self.team_id = (
-            team_id or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
+            workspace_id or team_id or os.getenv("SMARTMEMORY_WORKSPACE_ID") or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
         )
+        if team_id is not None and not workspace_id:
+            import warnings
+            warnings.warn(
+                "The 'team_id' parameter is deprecated and will be removed in v0.5.0. "
+                "Use 'workspace_id' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Build default headers (auth header added dynamically)
         self._base_headers = {
             "Content-Type": "application/json",
-            "X-Team-Id": self.team_id,
+            "X-Workspace-Id": self.team_id,
         }
 
         if self.is_authenticated:
@@ -2825,7 +2836,7 @@ class SmartMemoryClient:
         import httpx
 
         url = f"{self.base_url}{endpoint}"
-        req_headers = {"X-Team-Id": self.team_id}
+        req_headers = {"X-Workspace-Id": self.team_id}
         if headers:
             req_headers.update(headers)
 

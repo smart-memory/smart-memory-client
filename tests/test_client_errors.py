@@ -240,7 +240,7 @@ class TestRequestArguments:
         assert headers["Authorization"] == f"Bearer {API_KEY}"
 
     @patch("smartmemory_client.client.httpx.request")
-    def test_passes_team_id_header(
+    def test_passes_workspace_id_header(
         self, mock_request: MagicMock, client: SmartMemoryClient
     ):
         mock_request.return_value = _build_response(200, json_data={})
@@ -249,7 +249,7 @@ class TestRequestArguments:
 
         call_kwargs = mock_request.call_args
         headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers", {})
-        assert "X-Team-Id" in headers
+        assert "X-Workspace-Id" in headers
 
     @patch("smartmemory_client.client.httpx.request")
     def test_passes_json_body(self, mock_request: MagicMock, client: SmartMemoryClient):

@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### Header Rename: X-Team-Id → X-Workspace-Id (SCOPE-WS-1)
+- Constructor now accepts `workspace_id` parameter (preferred); `team_id` kept as deprecated alias
+- `team_id` emits `DeprecationWarning` only when used as the actual fallback (not when `workspace_id` is also provided)
+- Both `team_id` and `workspace_id` deprecated env vars (`SMARTMEMORY_TEAM_ID`) remain supported; `SMARTMEMORY_WORKSPACE_ID` is new preferred env var
+- `X-Team-Id` request header replaced with `X-Workspace-Id` in all HTTP calls
+- `team_id` alias and `SMARTMEMORY_TEAM_ID` env var will be removed in v0.5.0
+
 ### Added
 - **Procedure Schema Drift Detection (CFS-4)**: 5 new methods for schema drift management
   - `list_drift_events()` — list drift events with filtering (procedure_id, resolved, breaking_only, date range)
