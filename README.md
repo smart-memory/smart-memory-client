@@ -239,6 +239,27 @@ for neighbor in neighbors:
     print(f"{neighbor['id']}: {neighbor['relation']}")
 ```
 
+### Code Search
+
+```python
+# Semantic search over indexed code entities
+results = client.code_search("authentication functions", semantic=True)
+for entity in results:
+    print(f"{entity['name']} ({entity['entity_type']}) — {entity['file_path']}:{entity['line_number']}")
+    print(f"  Score: {entity['score']}")
+
+# Filter by entity type and repo
+results = client.code_search(
+    "payment handler",
+    semantic=True,
+    entity_type="function",
+    repo="my-service"
+)
+
+# Non-semantic (Cypher substring match, default)
+results = client.code_search("authenticate")
+```
+
 ### Enrichment
 
 ```python

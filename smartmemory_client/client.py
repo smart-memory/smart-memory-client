@@ -86,7 +86,9 @@ class SmartMemoryClient:
         timeout: float = 30.0,
         verify_ssl: bool = True,
         workspace_id: Optional[str] = None,
-        team_id: Optional[str] = None,  # deprecated alias for workspace_id, removed in v0.5.0
+        team_id: Optional[
+            str
+        ] = None,  # deprecated alias for workspace_id, removed in v0.5.0
     ):
         """
         Initialize SmartMemory client wrapper.
@@ -144,10 +146,15 @@ class SmartMemoryClient:
         # Resolve workspace_id; team_id is a deprecated alias (removed in v0.5.0).
         # Warn only when team_id is actually used as the fallback (workspace_id not provided).
         self.team_id = (
-            workspace_id or team_id or os.getenv("SMARTMEMORY_WORKSPACE_ID") or os.getenv("SMARTMEMORY_TEAM_ID") or "team_default_demo"
+            workspace_id
+            or team_id
+            or os.getenv("SMARTMEMORY_WORKSPACE_ID")
+            or os.getenv("SMARTMEMORY_TEAM_ID")
+            or "team_default_demo"
         )
         if team_id is not None and not workspace_id:
             import warnings
+
             warnings.warn(
                 "The 'team_id' parameter is deprecated and will be removed in v0.5.0. "
                 "Use 'workspace_id' instead.",
@@ -326,11 +333,18 @@ class SmartMemoryClient:
 
         if conversation_context:
             import dataclasses
+
             if isinstance(conversation_context, ConversationContextModel):
-                body_dict["conversation_context"] = dataclasses.asdict(conversation_context)
-            elif dataclasses.is_dataclass(conversation_context) and not isinstance(conversation_context, type):
+                body_dict["conversation_context"] = dataclasses.asdict(
+                    conversation_context
+                )
+            elif dataclasses.is_dataclass(conversation_context) and not isinstance(
+                conversation_context, type
+            ):
                 # Handle core ConversationContext or any other dataclass passed directly
-                body_dict["conversation_context"] = dataclasses.asdict(conversation_context)
+                body_dict["conversation_context"] = dataclasses.asdict(
+                    conversation_context
+                )
             else:
                 body_dict["conversation_context"] = conversation_context
 
@@ -518,6 +532,43 @@ class SmartMemoryClient:
             results.append(MemoryItem.from_dict(item_dict))
 
         return results
+
+    def code_search(
+        self,
+        query: str,
+        entity_type: Optional[str] = None,
+        repo: Optional[str] = None,
+        limit: int = 20,
+        semantic: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Search for code entities (classes, functions, routes, tests).
+
+        Args:
+            query: Search string (partial name match, or natural language when semantic=True)
+            entity_type: Filter by type: module, class, function, route, test
+            repo: Filter by repository name
+            limit: Maximum results (default 20)
+            semantic: Use vector similarity instead of name substring match
+
+        Returns:
+            List of code entity dicts with item_id, name, entity_type,
+            file_path, line_number, docstring, repo, score (when semantic=True).
+
+        Example:
+            ```python
+            # Name substring search (default)
+            results = client.code_search("auth", entity_type="class")
+
+            # Semantic search — natural language
+            results = client.code_search("functions that handle payments", semantic=True)
+            ```
+        """
+        params: Dict[str, Any] = {"query": query, "limit": limit, "semantic": semantic}
+        if entity_type:
+            params["entity_type"] = entity_type
+        if repo:
+            params["repo"] = repo
+        return self._request("GET", "/memory/code/search", params=params)
 
     def update(
         self,
