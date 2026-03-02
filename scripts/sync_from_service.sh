@@ -65,7 +65,7 @@ if [ -f "$SERVICE_DIR/openapi.schema.json" ]; then
     cp "$SERVICE_DIR/openapi.schema.json" "$CLIENT_DIR/openapi.schema.json"
 fi
 
-# Sync VERSION file from smart-memory (source of truth)
+# Sync VERSION file from smart-memory-core (source of truth)
 SMARTMEMORY_DIR="${SMARTMEMORY_DIR:-$(dirname $(dirname $SERVICE_DIR))/smart-memory}"
 if [ -f "$SMARTMEMORY_DIR/VERSION" ]; then
     echo -e "${YELLOW}Syncing VERSION from smart-memory...${NC}"
