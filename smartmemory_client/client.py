@@ -404,6 +404,9 @@ class SmartMemoryClient:
         use_ssg: Optional[bool] = None,
         enable_hybrid: Optional[bool] = True,
         channel_weights: Optional[Dict[str, float]] = None,
+        multi_hop: bool = False,
+        max_hops: int = 3,
+        budget_ms: int = 1500,
     ) -> List[MemoryItem]:
         """
         Search for memory items using semantic matching.
@@ -457,6 +460,10 @@ class SmartMemoryClient:
             body_dict["use_ssg"] = use_ssg
         if channel_weights is not None:
             body_dict["channel_weights"] = channel_weights
+        if multi_hop:
+            body_dict["multi_hop"] = True
+            body_dict["max_hops"] = max_hops
+            body_dict["budget_ms"] = budget_ms
 
         response_data = self._request("POST", "/memory/search", json_body=body_dict)
 
