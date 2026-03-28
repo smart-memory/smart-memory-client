@@ -403,6 +403,7 @@ class SmartMemoryClient:
         memory_type: Optional[str] = None,
         use_ssg: Optional[bool] = None,
         enable_hybrid: Optional[bool] = True,
+        channel_weights: Optional[Dict[str, float]] = None,
     ) -> List[MemoryItem]:
         """
         Search for memory items using semantic matching.
@@ -415,6 +416,9 @@ class SmartMemoryClient:
                     If None, uses config default. If True, uses SSG. If False, uses basic vector search.
             enable_hybrid: Enable hybrid retrieval (vector + keyword search with RRF fusion).
                           Default: True. Set to False for vector-only search.
+            channel_weights: Per-channel weight multipliers for RRF fusion (CORE-SEARCH-2a).
+                           Keys: entity-graph, ssg-traversal, semantic, regex-text, contains, keyword-bm25.
+                           Values: float multipliers (default varies by channel).
 
         Returns:
             List of MemoryItem objects
@@ -451,6 +455,8 @@ class SmartMemoryClient:
             body_dict["memory_type"] = memory_type
         if use_ssg is not None:
             body_dict["use_ssg"] = use_ssg
+        if channel_weights is not None:
+            body_dict["channel_weights"] = channel_weights
 
         response_data = self._request("POST", "/memory/search", json_body=body_dict)
 
