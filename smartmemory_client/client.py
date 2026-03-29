@@ -689,6 +689,50 @@ class SmartMemoryClient:
         except Exception as e:
             raise SmartMemoryClientError(f"Failed to ingest content: {str(e)}")
 
+    def ingest_conversation(
+        self,
+        turns: List[Dict[str, str]],
+        session_boundaries: Optional[List[int]] = None,
+        conversation_id: Optional[str] = None,
+        session_dates: Optional[List[str]] = None,
+        turns_per_chunk: int = 15,
+        max_chunk_chars: int = 12000,
+        max_concurrent: int = 4,
+    ) -> Dict[str, Any]:
+        """Ingest a conversation as session chunks through the full pipeline (RLM-1g).
+
+        Args:
+            turns: List of turn dicts with "role"/"speaker" and "content" keys.
+            session_boundaries: Turn indices where sessions start (e.g. [0, 50, 120]).
+            conversation_id: User-supplied ID (auto-generated if None).
+            session_dates: ISO date per session for metadata.
+            turns_per_chunk: Max turns per auto-chunk (default 15).
+            max_chunk_chars: Safety split for oversized chunks (default 12000).
+            max_concurrent: Semaphore limit for parallel chunk ingestion (default 4).
+
+        Returns:
+            Dict with conversation_id, conversation_node_id, chunks_ingested,
+            chunks_failed, total_turns, total_chunks, chunk_results, total_duration_ms.
+        """
+        body_dict: Dict[str, Any] = {"turns": turns}
+        if session_boundaries is not None:
+            body_dict["session_boundaries"] = session_boundaries
+        if conversation_id is not None:
+            body_dict["conversation_id"] = conversation_id
+        if session_dates is not None:
+            body_dict["session_dates"] = session_dates
+        if turns_per_chunk != 15:
+            body_dict["turns_per_chunk"] = turns_per_chunk
+        if max_chunk_chars != 12000:
+            body_dict["max_chunk_chars"] = max_chunk_chars
+        if max_concurrent != 4:
+            body_dict["max_concurrent"] = max_concurrent
+
+        try:
+            return self._request("POST", "/memory/ingest/conversation", json_body=body_dict)
+        except Exception as e:
+            raise SmartMemoryClientError(f"Failed to ingest conversation: {str(e)}")
+
     def link(self, source_id: str, target_id: str, link_type: str = "RELATED") -> bool:
         """
         Create a link between two memory items.
