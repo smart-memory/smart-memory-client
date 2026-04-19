@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CORE-MEMORY-DYNAMICS-1 M1a: `SmartMemoryClient.get_working_context(session_id, query, k=20, max_tokens=None, strategy=None) → Dict[str, Any]`.** New method posting to `POST /memory/context` via the shared `_request` helper. Returns contract-shaped response per `smart-memory-docs/docs/features/CORE-MEMORY-DYNAMICS-1/context-api-contract.json` (keys: `decision_id`, `items`, `drift_warnings`, `strategy_used`, `tokens_used`, `tokens_budget`, `deprecation`). Optional params filtered by `is not None` (not truthiness) so `max_tokens=0` and `strategy=""` are sent to the server for validation — protects against truthiness-filter regressions. Server `400 budget_too_small` and `5xx` failures raise `SmartMemoryClientError` per existing SDK error convention. 8 unit tests covering happy path, auth+workspace header emission, optional-param encoding, falsy-but-valid values, and 400/500 error paths. No `memory_recall` shim on this SDK — the SDK never exposed `memory_recall`.
+
 ### Changed
 
 #### Header Rename: X-Team-Id → X-Workspace-Id (SCOPE-WS-1)

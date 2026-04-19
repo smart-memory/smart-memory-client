@@ -465,7 +465,26 @@ class SmartMemoryClient:
             body_dict["max_hops"] = max_hops
             body_dict["budget_ms"] = budget_ms
 
-        response_data = self._request("POST", "/memory/search", json_body=body_dict)
+        # SELF-IMPROVE-6: use _request_raw to capture X-Search-Session-Id header
+        import httpx
+
+        url = f"{self.base_url}/memory/search"
+        req_headers = {"X-Workspace-Id": self.team_id}
+        if self.api_key:
+            req_headers["Authorization"] = f"Bearer {self.api_key}"
+
+        try:
+            response = httpx.request(
+                "POST", url, json=body_dict, headers=req_headers, timeout=self.timeout,
+            )
+            response.raise_for_status()
+            self._last_search_session_id = response.headers.get("X-Search-Session-Id")
+            response_data = response.json()
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.text if hasattr(e, "response") else str(e)
+            raise SmartMemoryClientError(f"Request failed: {e} - Detail: {error_detail}")
+        except Exception as e:
+            raise SmartMemoryClientError(f"Request failed: {str(e)}")
 
         if not response_data:
             return []
@@ -488,6 +507,54 @@ class SmartMemoryClient:
             results.append(MemoryItem.from_dict(item_dict))
 
         return results
+
+    @property
+    def last_search_session_id(self) -> Optional[str]:
+        """Return the search_session_id from the most recent search() call.
+
+        Use this with submit_result_feedback() to report which results were used.
+        """
+        return getattr(self, "_last_search_session_id", None)
+
+    def get_working_context(
+        self,
+        session_id: str,
+        query: str,
+        k: int = 20,
+        max_tokens: Optional[int] = None,
+        strategy: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Request a surfacing response from ``POST /memory/context``.
+
+        Replacement for the legacy ``memory_recall`` surface (CORE-MEMORY-DYNAMICS-1 M1a).
+        Response shape matches ``context-api-contract.json``.
+
+        Args:
+            session_id: Session scope for anchor resolution.
+            query: Natural-language query for the surfacing turn.
+            k: Item-count cap on returned items (1-100).
+            max_tokens: Token budget cap; None disables.
+            strategy: Override surfacing strategy; None lets the router decide.
+
+        Returns:
+            Dict with ``decision_id``, ``items``, ``drift_warnings``,
+            ``strategy_used``, ``tokens_used``, ``tokens_budget``,
+            ``deprecation`` keys (see contract).
+
+        Raises:
+            SmartMemoryClientError: Server returned 4xx/5xx (including
+                ``budget_too_small``) or a transport error occurred.
+        """
+        body: Dict[str, Any] = {
+            "session_id": session_id,
+            "query": query,
+            "k": k,
+        }
+        if max_tokens is not None:
+            body["max_tokens"] = max_tokens
+        if strategy is not None:
+            body["strategy"] = strategy
+        return self._request("POST", "/memory/context", json_body=body)
 
     def search_advanced(
         self,
@@ -1863,6 +1930,38 @@ class SmartMemoryClient:
             body["note"] = note
         return self._request(
             "POST", f"/memory/procedures/matches/{match_id}/feedback", json_body=body
+        )
+
+    def submit_result_feedback(
+        self,
+        session_id: str,
+        result_used: List[str],
+    ) -> Dict[str, Any]:
+        """Submit result-selection feedback for a completed search session (SELF-IMPROVE-6).
+
+        Call this after using results from ``search()`` to tell SmartMemory which
+        results were actually useful.  The ``session_id`` is available in the
+        ``X-Search-Session-Id`` response header from ``POST /memory/search``.
+
+        Args:
+            session_id: Server-generated session ID from the search response
+                (``X-Search-Session-Id`` header).
+            result_used: Item IDs from the search results that you incorporated.
+                Pass an empty list if none of the results were useful.
+
+        Returns:
+            Dict with ``status``, ``search_session_id``, ``result_used_count``,
+            ``result_shown_count``.
+
+        Raises:
+            HTTPError 404: Session not found or expired (> 1 hour since search).
+            HTTPError 400: result_used contains IDs not in the original result set.
+            HTTPError 409: Feedback already submitted for this session.
+        """
+        return self._request(
+            "POST",
+            "/memory/result-feedback",
+            json_body={"search_session_id": session_id, "result_used": result_used},
         )
 
     def get_procedure_match_stats(self) -> Dict[str, Any]:
