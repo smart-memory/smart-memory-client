@@ -104,7 +104,7 @@ class TestCRUDGoldenFlow:
         client = authenticated_client
         unique_id = uuid.uuid4().hex[:8]
 
-        memory_types = ["semantic", "episodic", "procedural", "working"]
+        memory_types = ["semantic", "episodic", "procedural", "pending"]
         created_ids = []
 
         for mem_type in memory_types:
