@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **CORE-MEMORY-DYNAMICS-1 M1b (fixup 2026-04-20):** golden CRUD integration test (`tests/integration/test_crud_golden.py::test_add_different_memory_types`) parametrize list updated from `[..., "working"]` to `[..., "pending"]`. Client callers that hardcode `memory_type="working"` will now receive a `400` validation error from the server post-M1b rename. Commit `3ca985f`.
+
 ### Added
 
 - **CORE-MEMORY-DYNAMICS-1 M1a: `SmartMemoryClient.get_working_context(session_id, query, k=20, max_tokens=None, strategy=None) → Dict[str, Any]`.** New method posting to `POST /memory/context` via the shared `_request` helper. Returns contract-shaped response per `smart-memory-docs/docs/features/CORE-MEMORY-DYNAMICS-1/context-api-contract.json` (keys: `decision_id`, `items`, `drift_warnings`, `strategy_used`, `tokens_used`, `tokens_budget`, `deprecation`). Optional params filtered by `is not None` (not truthiness) so `max_tokens=0` and `strategy=""` are sent to the server for validation — protects against truthiness-filter regressions. Server `400 budget_too_small` and `5xx` failures raise `SmartMemoryClientError` per existing SDK error convention. 8 unit tests covering happy path, auth+workspace header emission, optional-param encoding, falsy-but-valid values, and 400/500 error paths. No `memory_recall` shim on this SDK — the SDK never exposed `memory_recall`.
