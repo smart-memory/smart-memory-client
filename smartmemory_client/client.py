@@ -655,35 +655,48 @@ class SmartMemoryClient:
         item_id: str,
         content: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        properties: Optional[Dict[str, Any]] = None,
+        write_mode: Optional[str] = None,
     ) -> bool:
         """
-        Update a memory item.
+        Update a memory item (CORE-CRUD-UPDATE-1 contract).
 
         Args:
             item_id: Memory item ID
-            content: New content (optional)
-            metadata: New metadata (optional)
+            content: Convenience — folded into properties["content"]
+            metadata: Convenience — deep-merged with existing metadata
+            properties: Advanced — direct node-property dict. Takes precedence
+                over content/metadata when provided.
+            write_mode: "merge" (default) or "replace"
 
         Returns:
-            True if successful
+            True if successful, False on any HTTP error
 
-        Example:
+        Examples:
             ```python
-            # Update content
+            # Simple updates (convenience surface)
             client.update("item_123", content="Updated content")
-
-            # Update metadata
             client.update("item_123", metadata={"updated": True})
 
-            # Update both
-            client.update("item_123", content="New content", metadata={"version": 2})
+            # Advanced update (direct properties)
+            client.update("item_123",
+                          properties={"importance_score": 0.9, "tags": ["v2"]})
+
+            # Replace all properties (preserves memory_type + node_category)
+            client.update("item_123",
+                          properties={"content": "fresh", "tags": ["reset"]},
+                          write_mode="replace")
             ```
         """
-        body = {}
+        body: Dict[str, Any] = {}
         if content is not None:
             body["content"] = content
         if metadata is not None:
             body["metadata"] = metadata
+        if properties is not None:
+            body["properties"] = properties
+        if write_mode is not None:
+            body["write_mode"] = write_mode
 
         try:
             self._request("PUT", f"/memory/{item_id}", json_body=body)

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CORE-CRUD-UPDATE-1: `client.update()` exposes `properties` and `write_mode`.** Signature extended: `client.update(item_id, content=None, metadata=None, properties=None, write_mode=None)`. The convenience pair (`content`/`metadata`) still works — when omitted, no behavior change. Pass `properties={...}` for direct node-property updates; `properties` takes precedence over the conveniences when both are provided. `write_mode="merge"|"replace"` controls write semantics; default merges. Returns True on success, False on any HTTP error (unchanged). Contract: `smart-memory-docs/docs/features/CORE-CRUD-UPDATE-1/update-contract.json`.
+
 ### Changed — BREAKING
 
 - **CORE-MEMORY-DYNAMICS-1 M1b (fixup 2026-04-20):** golden CRUD integration test (`tests/integration/test_crud_golden.py::test_add_different_memory_types`) parametrize list updated from `[..., "working"]` to `[..., "pending"]`. Client callers that hardcode `memory_type="working"` will now receive a `400` validation error from the server post-M1b rename. Commit `3ca985f`.
