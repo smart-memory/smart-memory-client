@@ -95,7 +95,9 @@ def test_user(service_url, service_available):
         from service_common.repositories.factories import create_auth_repository
         from service_common.models.auth import SignupRequest
     except ImportError:
-        pytest.skip("service_common not available — integration tests require monorepo context")
+        pytest.skip(
+            "service_common not available — integration tests require monorepo context"
+        )
 
     unique_id = uuid.uuid4().hex[:8]
     email = f"test_{unique_id}@example.com"
@@ -104,7 +106,9 @@ def test_user(service_url, service_available):
     repo = create_auth_repository()
     auth_service = AuthService(repo)
     user_response, tokens = auth_service.signup(
-        SignupRequest(email=email, password=password, full_name=f"Test User {unique_id}")
+        SignupRequest(
+            email=email, password=password, full_name=f"Test User {unique_id}"
+        )
     )
 
     # Validate the provisioned session via /auth/me (still present)

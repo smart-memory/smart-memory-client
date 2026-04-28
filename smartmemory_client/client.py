@@ -475,14 +475,20 @@ class SmartMemoryClient:
 
         try:
             response = httpx.request(
-                "POST", url, json=body_dict, headers=req_headers, timeout=self.timeout,
+                "POST",
+                url,
+                json=body_dict,
+                headers=req_headers,
+                timeout=self.timeout,
             )
             response.raise_for_status()
             self._last_search_session_id = response.headers.get("X-Search-Session-Id")
             response_data = response.json()
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text if hasattr(e, "response") else str(e)
-            raise SmartMemoryClientError(f"Request failed: {e} - Detail: {error_detail}")
+            raise SmartMemoryClientError(
+                f"Request failed: {e} - Detail: {error_detail}"
+            )
         except Exception as e:
             raise SmartMemoryClientError(f"Request failed: {str(e)}")
 
@@ -809,7 +815,9 @@ class SmartMemoryClient:
             body_dict["max_concurrent"] = max_concurrent
 
         try:
-            return self._request("POST", "/memory/ingest/conversation", json_body=body_dict)
+            return self._request(
+                "POST", "/memory/ingest/conversation", json_body=body_dict
+            )
         except Exception as e:
             raise SmartMemoryClientError(f"Failed to ingest conversation: {str(e)}")
 

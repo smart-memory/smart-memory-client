@@ -58,7 +58,10 @@ class TestCodeSearchHappyPath:
         client.code_search("auth", semantic=True)
 
         call_args = mock_request.call_args
-        assert call_args.kwargs.get("params", call_args[1].get("params", {}))["semantic"] is True
+        assert (
+            call_args.kwargs.get("params", call_args[1].get("params", {}))["semantic"]
+            is True
+        )
 
     def test_code_search_non_semantic_default(self, client, mock_request):
         """Default semantic=False is forwarded."""

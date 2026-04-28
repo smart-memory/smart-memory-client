@@ -24,14 +24,18 @@ def client() -> SmartMemoryClient:
     return SmartMemoryClient(base_url=BASE_URL, api_key=API_KEY)
 
 
-def _resp(status_code: int, body: str = "", json_data: dict | list | None = None) -> MagicMock:
+def _resp(
+    status_code: int, body: str = "", json_data: dict | list | None = None
+) -> MagicMock:
     r = MagicMock(spec=httpx.Response)
     r.status_code = status_code
     r.text = body
     if status_code >= 400:
         request = MagicMock(spec=httpx.Request)
         r.raise_for_status.side_effect = httpx.HTTPStatusError(
-            message=f"{status_code} Error", request=request, response=r,
+            message=f"{status_code} Error",
+            request=request,
+            response=r,
         )
     else:
         r.raise_for_status.return_value = None
@@ -76,19 +80,26 @@ class TestHappyPaths:
 
     @patch("smartmemory_client.client.httpx.request")
     def test_summary_list_returns_array(self, mock_req, client):
-        mock_req.return_value = _resp(200, json_data=[
-            {"snapshot_id": "s1"}, {"snapshot_id": "s2"},
-        ])
+        mock_req.return_value = _resp(
+            200,
+            json_data=[
+                {"snapshot_id": "s1"},
+                {"snapshot_id": "s2"},
+            ],
+        )
         out = client.summary_list(limit=2)
         assert len(out) == 2
 
     @patch("smartmemory_client.client.httpx.request")
     def test_summary_delta_returns_payload(self, mock_req, client):
-        mock_req.return_value = _resp(200, json_data={
-            "from_snapshot_id": "a",
-            "to_snapshot_id": "b",
-            "entities_added": 3,
-        })
+        mock_req.return_value = _resp(
+            200,
+            json_data={
+                "from_snapshot_id": "a",
+                "to_snapshot_id": "b",
+                "entities_added": 3,
+            },
+        )
         out = client.summary_delta("a", "b")
         assert out["entities_added"] == 3
 
@@ -141,9 +152,7 @@ class TestNotFound:
 class TestErrorPaths:
     @patch("smartmemory_client.client.httpx.request")
     def test_summary_generate_409_lock_held(self, mock_req, client):
-        mock_req.return_value = _resp(
-            409, body='{"detail":{"reason":"lock_held"}}'
-        )
+        mock_req.return_value = _resp(409, body='{"detail":{"reason":"lock_held"}}')
         with pytest.raises(SmartMemoryClientError, match="Request failed"):
             client.summary_generate()
 

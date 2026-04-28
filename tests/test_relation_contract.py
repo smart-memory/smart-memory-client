@@ -5,6 +5,7 @@ The client uses Dict[str, Any] for relations — new fields from ONTO-PUB-3
 flow through without any client code changes. This test verifies that.
 """
 
+
 class TestRelationContractPassthrough:
     def test_new_fields_accessible_from_relation_dict(self):
         """ONTO-PUB-3 metadata fields are accessible when present in the API response."""

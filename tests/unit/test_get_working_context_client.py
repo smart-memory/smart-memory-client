@@ -78,7 +78,9 @@ def test_optional_params_only_sent_when_set(mock_req, client):
     resp.raise_for_status.return_value = None
     mock_req.return_value = resp
 
-    client.get_working_context(session_id="s1", query="hello", k=10, max_tokens=500, strategy="fast:recency")
+    client.get_working_context(
+        session_id="s1", query="hello", k=10, max_tokens=500, strategy="fast:recency"
+    )
     body = mock_req.call_args.kwargs["json"]
     assert body["k"] == 10
     assert body["max_tokens"] == 500
@@ -118,7 +120,9 @@ def test_budget_too_small_raises(mock_req, client):
     resp = MagicMock()
     resp.status_code = 400
     resp.text = '{"detail":{"code":"budget_too_small","message":"..."}}'
-    resp.raise_for_status.side_effect = httpx.HTTPStatusError("400", request=MagicMock(), response=resp)
+    resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "400", request=MagicMock(), response=resp
+    )
     mock_req.return_value = resp
 
     with pytest.raises(SmartMemoryClientError, match="Request failed"):
@@ -161,7 +165,9 @@ def test_server_error_raises(mock_req, client):
     resp = MagicMock()
     resp.status_code = 500
     resp.text = "Internal server error"
-    resp.raise_for_status.side_effect = httpx.HTTPStatusError("500", request=MagicMock(), response=resp)
+    resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "500", request=MagicMock(), response=resp
+    )
     mock_req.return_value = resp
 
     with pytest.raises(SmartMemoryClientError):
