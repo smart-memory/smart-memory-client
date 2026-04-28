@@ -32,5 +32,6 @@ class TestErrorHandling:
 ```
 
 ## Shared Contracts
-- Before implementing SDK methods, read the relevant contract in `/contracts/`
+- Before implementing SDK methods, read the relevant contract (check `docs/features/<FEATURE-ID>/` first, then legacy `/contracts/`)
+- New contracts go in `smart-memory-docs/docs/features/<FEATURE-ID>/`; legacy `/contracts/` is not git-tracked
 - Use the EXACT field names and enum values from contracts in tests
