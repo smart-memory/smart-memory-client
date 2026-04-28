@@ -3043,6 +3043,78 @@ class SmartMemoryClient:
         """
         return self._request("GET", f"/memory/procedures/schemas/{procedure_id}")
 
+    # ------------------------------------------------------------------
+    # Memory Snapshots (CORE-SUMMARY-1, E1)
+    # ------------------------------------------------------------------
+
+    def summary_generate(
+        self,
+        window_start: Optional[str] = None,
+        include_markdown: bool = True,
+    ) -> Dict[str, Any]:
+        """Fire a manual snapshot for the current workspace.
+
+        Returns the full snapshot payload. Raises ``SmartMemoryClientError``
+        on conflict (HTTP 409 ``{reason: lock_held}``).
+        """
+        body: Dict[str, Any] = {"include_markdown": include_markdown}
+        if window_start is not None:
+            body["window_start"] = window_start
+        return self._request("POST", "/memory/summary/generate", json_body=body)
+
+    def summary_latest(self) -> Optional[Dict[str, Any]]:
+        """Return the most recent snapshot for the current workspace."""
+        try:
+            return self._request("GET", "/memory/summary/latest")
+        except SmartMemoryClientError as e:
+            if "404" in str(e):
+                return None
+            raise
+
+    def summary_get(self, snapshot_id: str) -> Optional[Dict[str, Any]]:
+        """Return a specific snapshot by id, or ``None`` if not found."""
+        try:
+            return self._request("GET", f"/memory/summary/{snapshot_id}")
+        except SmartMemoryClientError as e:
+            if "404" in str(e):
+                return None
+            raise
+
+    def summary_list(
+        self,
+        is_heartbeat: Optional[bool] = None,
+        limit: int = 20,
+        before: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """List snapshots for the current workspace, newest first."""
+        params: Dict[str, Any] = {"limit": limit}
+        if is_heartbeat is not None:
+            params["is_heartbeat"] = str(is_heartbeat).lower()
+        if before is not None:
+            params["before"] = before
+        return self._request("GET", "/memory/summary/list", params=params) or []
+
+    def summary_delta(
+        self,
+        from_snapshot_id: str,
+        to_snapshot_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Return the SnapshotDelta between two snapshots."""
+        try:
+            return self._request(
+                "GET",
+                "/memory/summary/delta",
+                params={"from": from_snapshot_id, "to": to_snapshot_id},
+            )
+        except SmartMemoryClientError as e:
+            if "404" in str(e):
+                return None
+            raise
+
+    def summary_delete(self, snapshot_id: str) -> None:
+        """Admin-only. Delete a snapshot. Raises on 403/404/500."""
+        self._request("DELETE", f"/memory/summary/{snapshot_id}")
+
     def _request(
         self,
         method: str,

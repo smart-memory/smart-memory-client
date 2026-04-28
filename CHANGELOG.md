@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CORE-SUMMARY-1: Memory snapshot SDK methods.** Six new methods on `SmartMemoryClient`: `summary_generate(window_start=None, include_markdown=True)`, `summary_latest()`, `summary_get(snapshot_id)`, `summary_list(is_heartbeat=None, limit=20, before=None)`, `summary_delta(from_snapshot_id, to_snapshot_id)`, `summary_delete(snapshot_id)`. Read methods return `None` on 404; write methods raise `SmartMemoryClientError`. Tests cover happy path + 404 + 4xx + 500 per the global error-coverage rule. Contract: [`smart-memory-docs/docs/features/CORE-SUMMARY-1/snapshot-contract.json`](../smart-memory-docs/docs/features/CORE-SUMMARY-1/snapshot-contract.json).
+
 - **CORE-CRUD-UPDATE-1: `client.update()` exposes `properties` and `write_mode`.** Signature extended: `client.update(item_id, content=None, metadata=None, properties=None, write_mode=None)`. The convenience pair (`content`/`metadata`) still works — when omitted, no behavior change. Pass `properties={...}` for direct node-property updates; `properties` takes precedence over the conveniences when both are provided. `write_mode="merge"|"replace"` controls write semantics; default merges. Returns True on success, False on any HTTP error (unchanged). Contract: `smart-memory-docs/docs/features/CORE-CRUD-UPDATE-1/update-contract.json`.
 
 ### Changed — BREAKING
