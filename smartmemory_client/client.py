@@ -691,41 +691,34 @@ class SmartMemoryClient:
 
     def get_plan(self, plan_id: str) -> Dict[str, Any]:
         """Get a plan container with all its tasks."""
-        return self._request("GET", f"/memory/{plan_id}")
-
-    def delete_plan(self, plan_id: str) -> bool:
-        """Delete a plan."""
-        try:
-            self._request("DELETE", f"/memory/{plan_id}")
-            return True
-        except Exception:
-            return False
+        return self._request("GET", f"/memory/plans/{plan_id}")
 
     def update_plan_task(
-        self, plan_id: str, task_id: str, status: str, outcome: Optional[str] = None
+        self, plan_id: str, task_id: str, status: str
     ) -> Dict[str, Any]:
-        """Update a task's status within a plan."""
-        body: Dict[str, Any] = {"task_id": task_id, "status": status}
-        if outcome:
-            body["outcome"] = outcome
-        return self._request("PATCH", f"/memory/{plan_id}/task", json_body=body)
+        """Update a task's status within a plan.
 
-    def complete_plan(
-        self,
-        plan_id: str,
-        summary: Optional[str] = None,
-        graduate_to_decision: bool = False,
-    ) -> Dict[str, Any]:
-        """Mark a plan as completed."""
-        body: Dict[str, Any] = {"graduate_to_decision": graduate_to_decision}
-        if summary:
-            body["summary"] = summary
-        return self._request("POST", f"/memory/{plan_id}/complete", json_body=body)
+        Args:
+            status: One of "pending", "in_progress", "complete", "blocked".
+        """
+        return self._request(
+            "PATCH",
+            f"/memory/plans/{plan_id}/task",
+            json_body={"task_id": task_id, "status": status},
+        )
+
+    def complete_plan(self, plan_id: str, graduate: bool = False) -> Dict[str, Any]:
+        """Mark a plan as completed. If graduate=True, also create a decision record."""
+        return self._request(
+            "POST",
+            f"/memory/plans/{plan_id}/complete",
+            json_body={"graduate": graduate},
+        )
 
     def fail_plan(self, plan_id: str, reason: str) -> Dict[str, Any]:
         """Mark a plan as failed."""
         return self._request(
-            "POST", f"/memory/{plan_id}/fail", json_body={"reason": reason}
+            "POST", f"/memory/plans/{plan_id}/fail", json_body={"reason": reason}
         )
 
     def update(
@@ -999,10 +992,18 @@ class SmartMemoryClient:
         return self._request("GET", f"/memory/{item_id}/links")
 
     def search_by_metadata(
-        self, filters: Dict[str, Any], limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
-        """Search memory items by metadata key-value filters."""
-        params = {"limit": limit, "offset": offset, **filters}
+        self,
+        metadata_key: str,
+        metadata_value: str,
+        memory_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Search for a memory item by exact metadata key-value match."""
+        params: Dict[str, Any] = {
+            "metadata_key": metadata_key,
+            "metadata_value": metadata_value,
+        }
+        if memory_type:
+            params["memory_type"] = memory_type
         return self._request("GET", "/memory/by-metadata", params=params)
 
     def get_recall_profile(self, agent_id: str) -> Dict[str, Any]:
