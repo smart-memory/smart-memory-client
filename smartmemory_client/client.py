@@ -705,7 +705,7 @@ class SmartMemoryClient:
             body["write_mode"] = write_mode
 
         try:
-            self._request("PUT", f"/memory/{item_id}", json_body=body)
+            self._request("PATCH", f"/memory/{item_id}", json_body=body)
             return True
         except Exception:
             return False
@@ -1283,7 +1283,7 @@ class SmartMemoryClient:
             "anthropic_key": anthropic_key,
             "groq_key": groq_key,
         }
-        return self._request("PUT", "/auth/llm-keys", json_body=body)
+        return self._request("PATCH", "/auth/llm-keys", json_body=body)
 
     def get_llm_keys(self) -> Dict[str, Any]:
         """Get user's LLM provider API keys (masked)."""
@@ -1655,7 +1655,7 @@ class SmartMemoryClient:
             body["data_classification"] = data_classification
         if cost_center:
             body["cost_center"] = cost_center
-        return self._request("PUT", f"/memory/teams/{team_id}", json_body=body)
+        return self._request("PATCH", f"/memory/teams/{team_id}", json_body=body)
 
     def delete_team(self, team_id: str) -> Dict[str, Any]:
         """Delete a team."""
@@ -1678,7 +1678,7 @@ class SmartMemoryClient:
         """Update a team member's role."""
         body = {"role": role}
         return self._request(
-            "PUT", f"/memory/teams/{team_id}/members/{member_user_id}", json_body=body
+            "PATCH", f"/memory/teams/{team_id}/members/{member_user_id}", json_body=body
         )
 
     def remove_team_member(self, team_id: str, member_user_id: str) -> Dict[str, Any]:
