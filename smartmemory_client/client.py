@@ -656,6 +656,63 @@ class SmartMemoryClient:
             params["repo"] = repo
         return self._request("GET", "/memory/code/search", params=params)
 
+    def code_index(self, path: str, repo: Optional[str] = None, commit: Optional[str] = None) -> Dict[str, Any]:
+        """Index code entities from a file or directory."""
+        body: Dict[str, Any] = {"path": path}
+        if repo:
+            body["repo"] = repo
+        if commit:
+            body["commit"] = commit
+        return self._request("POST", "/memory/code/index", json_body=body)
+
+    def code_context(self, entity_name: str, repo: Optional[str] = None) -> Dict[str, Any]:
+        """Get rich context for a code entity."""
+        params: Dict[str, Any] = {"entity_name": entity_name}
+        if repo:
+            params["repo"] = repo
+        return self._request("GET", "/memory/code/context", params=params)
+
+    def code_dead_code(self, repo: str) -> Dict[str, Any]:
+        """Find unreferenced code entities in a repository."""
+        return self._request("GET", "/memory/code/dead-code", params={"repo": repo})
+
+    def code_dependencies(self, entity_name: str, direction: str = "both", repo: Optional[str] = None) -> Dict[str, Any]:
+        """Trace dependencies for a code entity."""
+        params: Dict[str, Any] = {"entity_name": entity_name, "direction": direction}
+        if repo:
+            params["repo"] = repo
+        return self._request("GET", "/memory/code/dependencies", params=params)
+
+    def get_plan(self, plan_id: str) -> Dict[str, Any]:
+        """Get a plan container with all its tasks."""
+        return self._request("GET", f"/memory/{plan_id}")
+
+    def delete_plan(self, plan_id: str) -> bool:
+        """Delete a plan."""
+        try:
+            self._request("DELETE", f"/memory/{plan_id}")
+            return True
+        except Exception:
+            return False
+
+    def update_plan_task(self, plan_id: str, task_id: str, status: str, outcome: Optional[str] = None) -> Dict[str, Any]:
+        """Update a task's status within a plan."""
+        body: Dict[str, Any] = {"task_id": task_id, "status": status}
+        if outcome:
+            body["outcome"] = outcome
+        return self._request("PATCH", f"/memory/{plan_id}/task", json_body=body)
+
+    def complete_plan(self, plan_id: str, summary: Optional[str] = None, graduate_to_decision: bool = False) -> Dict[str, Any]:
+        """Mark a plan as completed."""
+        body: Dict[str, Any] = {"graduate_to_decision": graduate_to_decision}
+        if summary:
+            body["summary"] = summary
+        return self._request("POST", f"/memory/{plan_id}/complete", json_body=body)
+
+    def fail_plan(self, plan_id: str, reason: str) -> Dict[str, Any]:
+        """Mark a plan as failed."""
+        return self._request("POST", f"/memory/{plan_id}/fail", json_body={"reason": reason})
+
     def update(
         self,
         item_id: str,
@@ -918,19 +975,31 @@ class SmartMemoryClient:
             logger.warning(f"Error getting neighbors: {e}")
             return []
 
+    def get_lineage(self, item_id: str) -> Dict[str, Any]:
+        """Get the supersession lineage chain for a memory item."""
+        return self._request("GET", f"/memory/{item_id}/lineage")
+
+    def get_links(self, item_id: str) -> Dict[str, Any]:
+        """Get all edges (links) for a memory item."""
+        return self._request("GET", f"/memory/{item_id}/links")
+
+    def search_by_metadata(
+        self, filters: Dict[str, Any], limit: int = 50, offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Search memory items by metadata key-value filters."""
+        params = {"limit": limit, "offset": offset, **filters}
+        return self._request("GET", "/memory/by-metadata", params=params)
+
+    def get_recall_profile(self, agent_id: str) -> Dict[str, Any]:
+        """Get an agent's recall profile for personality-aware retrieval."""
+        return self._request("GET", f"/memory/agents/{agent_id}/recall-profile")
+
+    def set_recall_profile(self, agent_id: str, recall_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """Set an agent's recall profile. Send {} to clear."""
+        return self._request("PUT", f"/memory/agents/{agent_id}/recall-profile", json_body={"recall_profile": recall_profile})
+
     def summary(self) -> Dict[str, Any]:
-        """
-        Get summary statistics about the memory system.
-
-        Returns:
-            Summary statistics
-
-        Example:
-            ```python
-            summary = client.summary()
-            print(f"Total memories: {summary.get('total_count', 0)}")
-            ```
-        """
+        """Get summary statistics about the memory system."""
         return self._request("GET", "/memory/summary")
 
     def enrich(
