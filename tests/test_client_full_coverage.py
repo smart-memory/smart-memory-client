@@ -126,7 +126,7 @@ class TestClientFullCoverage:
 
         client.update_llm_keys(openai_key="key")
         mock_request.assert_called_with(
-            "PUT",
+            "PATCH",
             "/auth/llm-keys",
             json_body={"openai_key": "key", "anthropic_key": None, "groq_key": None},
         )
@@ -399,7 +399,7 @@ class TestClientFullCoverage:
 
         client.update_team("team-1", name="Team B")
         mock_request.assert_called_with(
-            "PUT", "/memory/teams/team-1", json_body={"name": "Team B"}
+            "PATCH", "/memory/teams/team-1", json_body={"name": "Team B"}
         )
 
         client.delete_team("team-1")
@@ -417,7 +417,7 @@ class TestClientFullCoverage:
 
         client.update_team_member("team-1", "user-1", "admin")
         mock_request.assert_called_with(
-            "PUT", "/memory/teams/team-1/members/user-1", json_body={"role": "admin"}
+            "PATCH", "/memory/teams/team-1/members/user-1", json_body={"role": "admin"}
         )
 
         client.remove_team_member("team-1", "user-1")

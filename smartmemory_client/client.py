@@ -25,9 +25,54 @@ logger = logging.getLogger(__name__)
 
 
 class SmartMemoryClientError(Exception):
-    """Base exception for SmartMemory client errors"""
+    """Base exception for SmartMemory client errors.
 
-    pass
+    Subclasses (raised by the SDK on HTTP-status errors) expose:
+        status_code (int | None): the HTTP status the server returned, if any.
+        detail (str): the response body (best-effort).
+
+    Catching ``SmartMemoryClientError`` continues to handle every typed
+    subclass for backwards compatibility.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+        detail: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.detail = detail or ""
+
+
+class SmartMemoryNotFoundError(SmartMemoryClientError):
+    """Raised on HTTP 404 — the requested resource does not exist."""
+
+
+class SmartMemoryPermissionError(SmartMemoryClientError):
+    """Raised on HTTP 401/403 — auth missing, expired, or insufficient."""
+
+
+class SmartMemoryValidationError(SmartMemoryClientError):
+    """Raised on HTTP 400/409/422 — request shape or state was rejected."""
+
+
+class SmartMemoryServerError(SmartMemoryClientError):
+    """Raised on HTTP 5xx — the server failed to process the request."""
+
+
+def _exception_for_status(status: int) -> type[SmartMemoryClientError]:
+    """Map an HTTP status code to the most specific SDK exception class."""
+    if status == 404:
+        return SmartMemoryNotFoundError
+    if status in (401, 403):
+        return SmartMemoryPermissionError
+    if status in (400, 409, 422):
+        return SmartMemoryValidationError
+    if 500 <= status < 600:
+        return SmartMemoryServerError
+    return SmartMemoryClientError
 
 
 class SmartMemoryClient:
@@ -278,6 +323,7 @@ class SmartMemoryClient:
         memory_type: str = "semantic",
         metadata: Optional[Dict[str, Any]] = None,
         use_pipeline: bool = True,
+        profile_name: Optional[str] = None,
         conversation_context: Optional[
             Union[ConversationContextModel, Dict[str, Any]]
         ] = None,
@@ -290,6 +336,10 @@ class SmartMemoryClient:
             memory_type: Type of memory (semantic, episodic, procedural, working)
             metadata: Additional metadata for the memory
             use_pipeline: Whether to run full extraction pipeline (default: True)
+            profile_name: Optional pipeline profile name (e.g. "lite", "full")
+                routed server-side; selects an alternate pipeline configuration.
+            conversation_context: Optional conversation context for
+                conversation-aware entity extraction.
 
         Returns:
             Memory item ID
@@ -301,6 +351,9 @@ class SmartMemoryClient:
 
             # With pipeline disabled (faster)
             item_id = client.add("Quick note", use_pipeline=False)
+
+            # With a specific pipeline profile
+            item_id = client.add("Tell me later", profile_name="lite")
 
             # With metadata
             item_id = client.add(
@@ -330,6 +383,9 @@ class SmartMemoryClient:
             "metadata": metadata or {},
             "use_pipeline": use_pipeline,
         }
+
+        if profile_name is not None:
+            body_dict["profile_name"] = profile_name
 
         if conversation_context:
             import dataclasses
@@ -367,7 +423,7 @@ class SmartMemoryClient:
         else:
             raise SmartMemoryClientError(f"Unexpected response format: {result}")
 
-    def get(self, item_id: str) -> Optional[MemoryItem]:
+    def get(self, item_id: str) -> MemoryItem:
         """
         Retrieve a memory item by ID.
 
@@ -375,26 +431,30 @@ class SmartMemoryClient:
             item_id: Memory item ID
 
         Returns:
-            MemoryItem object or None if not found
+            MemoryItem object.
+
+        Raises:
+            SmartMemoryNotFoundError: 404 — no item with that ID.
+            SmartMemoryPermissionError: 401/403 — caller cannot read it.
+            SmartMemoryServerError: 5xx — server failure.
+            SmartMemoryClientError: any other transport or unexpected failure.
 
         Example:
             ```python
-            memory = client.get("item_123")
-            if memory:
+            try:
+                memory = client.get("item_123")
                 print(memory.content)
+            except SmartMemoryNotFoundError:
+                print("not found")
             ```
         """
-        try:
-            response = self._request("GET", f"/memory/{item_id}")
-
-            if response is None:
-                return None
-
-            # Convert response to MemoryItem using factory method
-            return MemoryItem.from_dict(response)
-        except Exception as e:
-            logger.error(f"Error getting memory {item_id}: {e}")
-            return None
+        response = self._request("GET", f"/memory/{item_id}")
+        if response is None:
+            raise SmartMemoryNotFoundError(
+                f"Request failed: empty 204 body for /memory/{item_id}",
+                status_code=204,
+            )
+        return MemoryItem.from_dict(response)
 
     def search(
         self,
@@ -728,7 +788,7 @@ class SmartMemoryClient:
         metadata: Optional[Dict[str, Any]] = None,
         properties: Optional[Dict[str, Any]] = None,
         write_mode: Optional[str] = None,
-    ) -> bool:
+    ) -> None:
         """
         Update a memory item (CORE-CRUD-UPDATE-1 contract).
 
@@ -740,22 +800,21 @@ class SmartMemoryClient:
                 over content/metadata when provided.
             write_mode: "merge" (default) or "replace"
 
-        Returns:
-            True if successful, False on any HTTP error
+        Raises:
+            SmartMemoryNotFoundError: 404 — no item with that ID.
+            SmartMemoryPermissionError: 401/403 — caller cannot modify it.
+            SmartMemoryValidationError: 400/422 — body rejected.
+            SmartMemoryServerError: 5xx — server failure.
+            SmartMemoryClientError: any other transport or unexpected failure.
 
         Examples:
             ```python
-            # Simple updates (convenience surface)
             client.update("item_123", content="Updated content")
             client.update("item_123", metadata={"updated": True})
-
-            # Advanced update (direct properties)
             client.update("item_123",
                           properties={"importance_score": 0.9, "tags": ["v2"]})
-
-            # Replace all properties (preserves memory_type + node_category)
             client.update("item_123",
-                          properties={"content": "fresh", "tags": ["reset"]},
+                          properties={"content": "fresh"},
                           write_mode="replace")
             ```
         """
@@ -769,33 +828,27 @@ class SmartMemoryClient:
         if write_mode is not None:
             body["write_mode"] = write_mode
 
-        try:
-            self._request("PATCH", f"/memory/{item_id}", json_body=body)
-            return True
-        except Exception:
-            return False
+        self._request("PATCH", f"/memory/{item_id}", json_body=body)
 
-    def delete(self, item_id: str) -> bool:
+    def delete(self, item_id: str) -> None:
         """
         Delete a memory item.
 
         Args:
             item_id: Memory item ID
 
-        Returns:
-            True if successful
+        Raises:
+            SmartMemoryNotFoundError: 404 — no item with that ID.
+            SmartMemoryPermissionError: 401/403 — caller cannot delete it.
+            SmartMemoryServerError: 5xx — server failure.
+            SmartMemoryClientError: any other transport or unexpected failure.
 
         Example:
             ```python
-            if client.delete("item_123"):
-                print("Memory deleted")
+            client.delete("item_123")
             ```
         """
-        try:
-            self._request("DELETE", f"/memory/{item_id}")
-            return True
-        except Exception:
-            return False
+        self._request("DELETE", f"/memory/{item_id}")
 
     def ingest(
         self,
@@ -1073,30 +1126,6 @@ class SmartMemoryClient:
         """
         body = {"traits": traits or {}, "preferences": preferences or {}}
         return self._request("POST", "/memory/personalize", json_body=body)
-
-    def provide_feedback(
-        self, feedback: Dict[str, Any], memory_type: str = "semantic"
-    ) -> Dict[str, Any]:
-        """
-        Provide feedback to improve the memory system.
-
-        Args:
-            feedback: Feedback information
-            memory_type: Type of memory to update
-
-        Returns:
-            Feedback processing result
-
-        Example:
-            ```python
-            client.provide_feedback(
-                feedback={"rating": 5, "comment": "Great result"},
-                memory_type="semantic"
-            )
-            ```
-        """
-        body = {"feedback": feedback, "memory_type": memory_type}
-        return self._request("POST", "/memory/feedback", json_body=body)
 
     def cluster(
         self, distance_threshold: float = 0.1, dry_run: bool = False
@@ -3249,12 +3278,16 @@ class SmartMemoryClient:
                 return None
             return response.json()
         except httpx.HTTPStatusError as e:
+            status = e.response.status_code if hasattr(e, "response") else 0
             error_detail = e.response.text if hasattr(e, "response") else str(e)
-            raise SmartMemoryClientError(
-                f"Request failed: {e} - Detail: {error_detail}"
-            )
+            exc_cls = _exception_for_status(status)
+            raise exc_cls(
+                f"Request failed: {e} - Detail: {error_detail}",
+                status_code=status,
+                detail=error_detail,
+            ) from e
         except Exception as e:
-            raise SmartMemoryClientError(f"Request failed: {str(e)}")
+            raise SmartMemoryClientError(f"Request failed: {str(e)}") from e
 
     def feedback(
         self,

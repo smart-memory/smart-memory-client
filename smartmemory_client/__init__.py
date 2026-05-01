@@ -32,7 +32,14 @@ For more information:
     https://docs.smartmemory.dev
 """
 
-from smartmemory_client.client import SmartMemoryClient, SmartMemoryClientError
+from smartmemory_client.client import (
+    SmartMemoryClient,
+    SmartMemoryClientError,
+    SmartMemoryNotFoundError,
+    SmartMemoryPermissionError,
+    SmartMemoryValidationError,
+    SmartMemoryServerError,
+)
 from smartmemory_client.models import MemoryItem, ConversationContextModel
 
 try:
@@ -55,6 +62,10 @@ except ImportError:
 __all__ = [
     "SmartMemoryClient",
     "SmartMemoryClientError",
+    "SmartMemoryNotFoundError",
+    "SmartMemoryPermissionError",
+    "SmartMemoryValidationError",
+    "SmartMemoryServerError",
     "MemoryItem",
     "ConversationContextModel",
     "__version__",

@@ -281,15 +281,15 @@ result = client.personalize(
 ### Feedback
 
 ```python
-# Provide feedback
-result = client.provide_feedback(
-    feedback={
-        "item_id": "123",
-        "rating": 5,
-        "comment": "Very helpful"
-    },
-    memory_type="semantic"
+# Reinforce recalled memory items: bumps retention_score immediately and
+# strengthens CO_RETRIEVED edges between items (feeding the Hebbian evolver).
+results = client.search("what did we decide about auth?")
+result = client.feedback(
+    item_ids=[r.item_id for r in results],
+    outcome="helpful",  # "helpful" | "misleading" | "neutral"
+    query="what did we decide about auth?",
 )
+# result == {"updated": N, "edges_strengthened": M, "outcome": "helpful"}
 ```
 
 ### Reasoning Traces (System 2 Memory)

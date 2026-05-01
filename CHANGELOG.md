@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING (SDK-CONSISTENCY-1)
+
+- **`client.get(item_id)` now raises instead of returning `None`.** Returns `MemoryItem` on success. Raises `SmartMemoryNotFoundError` (404), `SmartMemoryPermissionError` (401/403), `SmartMemoryServerError` (5xx), or `SmartMemoryClientError` (transport/other). Callers that relied on `if not (item := client.get(id)): ...` must switch to `try/except SmartMemoryNotFoundError`.
+- **`client.update(...)` now raises instead of returning `False`.** Return type is now `None`. Same typed exceptions as `get()` (plus `SmartMemoryValidationError` on 400/422).
+- **`client.delete(item_id)` now raises instead of returning `False`.** Return type is now `None`. Same typed exceptions as `get()`.
+- **`client.provide_feedback()` deleted.** It targeted a server endpoint shape that has been removed (the legacy `/memory/feedback` route accepting `{feedback, memory_type}`). The `client.feedback(item_ids, outcome, query)` method is the correct path for retrieval reinforcement.
+
+### Added (SDK-CONSISTENCY-1)
+
+- **Typed exception hierarchy** as siblings of `SmartMemoryClientError`:
+  - `SmartMemoryNotFoundError` (404)
+  - `SmartMemoryPermissionError` (401/403)
+  - `SmartMemoryValidationError` (400/409/422)
+  - `SmartMemoryServerError` (5xx)
+  All inherit from `SmartMemoryClientError` for backwards compatibility — existing `pytest.raises(SmartMemoryClientError)` and `match="Request failed"` assertions still pass. Each exception exposes `status_code` and `detail` attributes.
+- **`client.add(..., profile_name=None)`** parameter added to bring Python parity with the JS SDK's `MemoryAPI.create({ profileName })`. Routes to `profile_name` server-side; selects an alternate pipeline configuration. Omitted from the request body when `None`.
+
+### Fixed
+
+- **PUT→PATCH stale assertions:** `test_client_full_coverage.py` was asserting `PUT` on `/auth/llm-keys`, `/memory/teams/{id}`, and `/memory/teams/{id}/members/{user_id}`. The SDK methods themselves had already migrated to `PATCH` in `06d7f82`; only the test mock-call assertions were stale. Updated.
+
 ### Added
 
 - **CORE-SUMMARY-1: Memory snapshot SDK methods.** Six new methods on `SmartMemoryClient`: `summary_generate(window_start=None, include_markdown=True)`, `summary_latest()`, `summary_get(snapshot_id)`, `summary_list(is_heartbeat=None, limit=20, before=None)`, `summary_delta(from_snapshot_id, to_snapshot_id)`, `summary_delete(snapshot_id)`. Read methods return `None` on 404; write methods raise `SmartMemoryClientError`. Tests cover happy path + 404 + 4xx + 500 per the global error-coverage rule. Contract: [`smart-memory-docs/docs/features/CORE-SUMMARY-1/snapshot-contract.json`](../smart-memory-docs/docs/features/CORE-SUMMARY-1/snapshot-contract.json).

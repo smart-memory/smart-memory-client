@@ -9,7 +9,14 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from smartmemory_client.client import SmartMemoryClient, SmartMemoryClientError
+from smartmemory_client.client import (
+    SmartMemoryClient,
+    SmartMemoryClientError,
+    SmartMemoryNotFoundError,
+    SmartMemoryPermissionError,
+    SmartMemoryValidationError,
+    SmartMemoryServerError,
+)
 
 BASE_URL = "http://localhost:9001"
 API_KEY = "test_token_abc123"
@@ -293,3 +300,116 @@ class TestRequestArguments:
         call_kwargs = mock_request.call_args
         headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers", {})
         assert "Authorization" not in headers
+
+
+class TestTypedExceptions:
+    """SDK-CONSISTENCY-1 B3: HTTP status codes map to typed exception subclasses."""
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_404_raises_not_found(self, mock_request, client):
+        mock_request.return_value = _build_response(404, body="missing")
+        with pytest.raises(SmartMemoryNotFoundError) as exc:
+            client._request("GET", "/memory/x")
+        assert exc.value.status_code == 404
+        assert exc.value.detail == "missing"
+        assert isinstance(exc.value, SmartMemoryClientError)  # backward-compat
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_401_raises_permission(self, mock_request, client):
+        mock_request.return_value = _build_response(401, body="unauthorized")
+        with pytest.raises(SmartMemoryPermissionError) as exc:
+            client._request("GET", "/memory/x")
+        assert exc.value.status_code == 401
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_403_raises_permission(self, mock_request, client):
+        mock_request.return_value = _build_response(403, body="forbidden")
+        with pytest.raises(SmartMemoryPermissionError) as exc:
+            client._request("GET", "/memory/x")
+        assert exc.value.status_code == 403
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_400_raises_validation(self, mock_request, client):
+        mock_request.return_value = _build_response(400, body="bad")
+        with pytest.raises(SmartMemoryValidationError) as exc:
+            client._request("POST", "/memory/add", json_body={})
+        assert exc.value.status_code == 400
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_422_raises_validation(self, mock_request, client):
+        mock_request.return_value = _build_response(422, body="unprocessable")
+        with pytest.raises(SmartMemoryValidationError) as exc:
+            client._request("POST", "/memory/add", json_body={})
+        assert exc.value.status_code == 422
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_500_raises_server(self, mock_request, client):
+        mock_request.return_value = _build_response(500, body="boom")
+        with pytest.raises(SmartMemoryServerError) as exc:
+            client._request("GET", "/memory/x")
+        assert exc.value.status_code == 500
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_503_raises_server(self, mock_request, client):
+        mock_request.return_value = _build_response(503, body="unavailable")
+        with pytest.raises(SmartMemoryServerError) as exc:
+            client._request("GET", "/memory/x")
+        assert exc.value.status_code == 503
+
+
+class TestCrudRaisesInsteadOfSwallow:
+    """SDK-CONSISTENCY-1 B3: get/update/delete propagate typed errors."""
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_get_raises_not_found(self, mock_request, client):
+        mock_request.return_value = _build_response(404, body="missing")
+        with pytest.raises(SmartMemoryNotFoundError):
+            client.get("nonexistent")
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_get_raises_permission(self, mock_request, client):
+        mock_request.return_value = _build_response(403, body="forbidden")
+        with pytest.raises(SmartMemoryPermissionError):
+            client.get("hidden")
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_update_raises_not_found(self, mock_request, client):
+        mock_request.return_value = _build_response(404, body="missing")
+        with pytest.raises(SmartMemoryNotFoundError):
+            client.update("nonexistent", content="x")
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_update_raises_validation(self, mock_request, client):
+        mock_request.return_value = _build_response(422, body="bad shape")
+        with pytest.raises(SmartMemoryValidationError):
+            client.update("item", properties={"bad": object()})
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_delete_raises_not_found(self, mock_request, client):
+        mock_request.return_value = _build_response(404, body="missing")
+        with pytest.raises(SmartMemoryNotFoundError):
+            client.delete("nonexistent")
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_delete_raises_server(self, mock_request, client):
+        mock_request.return_value = _build_response(500, body="boom")
+        with pytest.raises(SmartMemoryServerError):
+            client.delete("item")
+
+
+class TestAddProfileNameSymmetry:
+    """SDK-CONSISTENCY-1 B2: Python add() exposes profile_name (was JS-only)."""
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_add_with_profile_name_includes_it_in_body(self, mock_request, client):
+        mock_request.return_value = _build_response(200, json_data={"id": "x"})
+        client.add("hello", profile_name="lite")
+        body = mock_request.call_args.kwargs["json"]
+        assert body.get("profile_name") == "lite"
+
+    @patch("smartmemory_client.client.httpx.request")
+    def test_add_without_profile_name_omits_it(self, mock_request, client):
+        mock_request.return_value = _build_response(200, json_data={"id": "x"})
+        client.add("hello")
+        body = mock_request.call_args.kwargs["json"]
+        assert "profile_name" not in body
